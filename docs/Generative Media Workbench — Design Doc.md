@@ -1,6 +1,6 @@
 # Magic Lantern — Design Doc
 
-Sep 25, 2026 · @Ned
+Sep 25, 2026 · @Ned · Revised Oct 10, 2026: TypeScript and React; StoryEngine integration designed ([StoryEngine Integration](<StoryEngine Integration.md>))
 
 ## Purpose and scope
 
@@ -51,8 +51,10 @@ The client speaks one rich canonical schema. Each backend route declares what it
 GenerationRequest {
   mode:       txt2img | img2img | inpaint | edit | txt2vid | img2vid | vid_extend | upscale
   prompt:     { positive, negative?, dialect_hint? }
-  inputs:     [ { role: init | mask | ref | control | ip_adapter | first_frame | last_frame | annotation,
+  inputs:     [ { role: init | mask | ref | style | control | ip_adapter | first_frame | last_frame | annotation,
                   asset_id, weight?, region? } ]
+  subjects?:  [ { label?, references: [ { asset_id, crop? } ], descriptors?, adapters? } ]
+  style?:     { exemplars: [ { asset_id, crop? } ], text? }
   geometry:   { width, height, frames?, fps?, duration_s? }
   sampling:   { steps?, cfg?, distilled_guidance?, sampler?, scheduler?, seed, eta?, flow_shift? }
   adapters:   [ { kind: lora | embedding, id, weight, stage? } ]
@@ -64,6 +66,8 @@ GenerationRequest {
 ```
 
 `extensions` is the escape hatch for backend-specific long-tail fields: sd.cpp's SLG, cache modes, VAE tiling. A field used across several backends gets promoted into the canonical schema.
+
+`subjects` and `style` say *who* and *in what style*, independent of how a backend takes them. The resolver conveys each subject by whatever the route supports: reference images, IP-adapter, a LoRA, or descriptor text as the emulated fallback. The resolved record says which. Likeness and style stay separate: the same character in ink wash and in photoreal is still that character. The shapes mirror StoryEngine's `VisualDescriptors`, its normalised crop rectangle, and its split between likeness references and style exemplars. They are drafts, to be settled in the paper test before 0.3.
 
 ### Capability states
 
@@ -210,18 +214,19 @@ A local daemon serves a web UI; an optional desktop shell wraps the same daemon.
 
 | Layer | Choice | Rationale |
 | --- | --- | --- |
-| Daemon | Rust (axum, SQLite via sqlx or rusqlite, tokio) | Single static binary, easy systemd unit; adapter work is HTTP and JSON |
-| UI | TypeScript, SvelteKit or Solid | Served by the daemon; the browser is the LAN client for phone, tablet and laptop |
-| Desktop | Tauri shell, optional | Embeds the daemon for people who want an app icon |
+| Daemon | TypeScript on Node 26 (Fastify, TypeBox, `node:sqlite`, sharp) | StoryEngine's server stack, so schema and client code are shared without codegen; adapter work is HTTP and JSON |
+| UI | React (Vite, TanStack, Tailwind v4, Radix) | Served by the daemon; the browser is the LAN client for phone, tablet and laptop. Components are shared with StoryEngine's Character Studio |
+| Shared packages | `@lantern/schema`, `@lantern/client`, `@lantern/react`, MIT | What StoryEngine depends on |
+| Desktop | Tauri shell, optional | Runs the daemon as a sidecar for people who want an app icon |
 | Storage | Content-addressed files + SQLite | Simple backup; no external database |
 | Adapters | In-process (built-in) or JSON-RPC (third-party) | Language-agnostic extensions |
 
-Python was the alternative for the daemon. Its advantage is image-metadata and Comfy tooling libraries, but none of that work is heavy enough to decide the question.
+Rust was the original choice for the daemon, for a single static binary; Python was the alternative. Neither reason was heavy enough to decide the question. Sharing code with StoryEngine was the first concrete reason pointing either way, and it points to TypeScript. The cost is the single binary: Lantern ships as an OCI image and as a tarball with a systemd unit, as StoryEngine does.
 
 ### LAN hosting and security
 
 - Bind to localhost by default; LAN exposure is opt-in.
-- Auth: a single password, or trust a reverse proxy's auth header.
+- Auth: a single password, or trust a reverse proxy's auth header. Machine clients (StoryEngine, scripts) use per-client API tokens.
 - Light multi-user: per-user libraries and budgets, no role-based access control.
 - Secrets live only in the daemon. API keys never reach the browser.
 
@@ -243,52 +248,53 @@ Local backends reach 1.0 first; proprietary support follows once the job system 
 | Milestone | Scope | Exit criterion |
 | --- | --- | --- |
 | 0.1 | Daemon, SQLite library, sd.cpp native adapter, descriptor-driven generate panel, provenance | Reproduce any output from its stored request |
-| 0.3 | sdapi and OpenAI-compatible adapters; emulation layer (batch, hires); multi-route model registry | Same model reachable via two routes with failover |
-| 0.5 | Compare grid across models and routes; LLM prompt assistance | One-action cross-model comparison |
-| 0.7 | ComfyUI template adapter with binding import; out-of-process adapter protocol | A third-party adapter runs without core changes |
+| 0.3 | sdapi and OpenAI-compatible adapters; emulation layer (batch, hires); multi-route model registry; OpenAI-compatible proxy surface with client tokens and presets | Same model reachable via two routes with failover; a StoryEngine session illustrates through Lantern |
+| 0.5 | Compare grid across models and routes; subjects and styles; LLM prompt assistance; shared schema and React packages published | One-action cross-model comparison |
+| 0.7 | ComfyUI template adapter with binding import; out-of-process adapter protocol; native API v1 frozen and client package published | A third-party adapter runs without core changes |
 | 0.9 | Video: sd.cpp `vid_gen`, then Comfy video workflows, then the shot strip | Extend chain of three shots with lineage |
 | 1.0 | Hardening, library import from other tools, Tauri shell | Daily-driver stable on the homelab |
-| Post-1.0 | Proprietary adapters (aggregators first), cost and budget system, annotation layer, public API (proxy surface and integration API) | — |
+| Post-1.0 | Proprietary adapters (aggregators first), cost and budget system, annotation layer, public API hardening (versioning, documentation, webhooks, MCP) | — |
 
 Even though proprietary adapters come after 1.0, test the canonical schema and descriptor model against at least one proprietary API on paper before 0.3. That keeps the abstraction from turning out to be local-only.
 
-### Post-1.0: public API
+### Public API
 
 Lantern gets a supported external API with two jobs: acting as an image-model proxy for other software, and giving outside tools real integration.
 
-**Build for it from 0.1.** The web UI should talk to the daemon over the same HTTP API that will later be published. Post-1.0 work is then stabilising, versioning, documenting and authenticating an API that already exists, rather than building new plumbing.
+**Build for it from 0.1.** The web UI talks to the daemon over the same HTTP API that is later published. StoryEngine pulls two pieces forward: the proxy surface ships at 0.3, and the native API is frozen at 0.7. What remains for after 1.0 is versioning policy, documentation, webhooks and MCP.
 
 | Surface | Purpose | Shape |
 | --- | --- | --- |
-| Proxy | Drop-in image backend for any OpenAI-images client (Open WebUI, chat frontends, scripts) | OpenAI-compatible `/v1/images/generations`, `/edits`, `/models`; model ids map to registry profiles or aliases; possibly an `sdapi` shim for A1111-era tools |
-| Native | Full-fidelity access for integrations | Canonical `GenerationRequest`, async jobs, per-model capability discovery, library query, lineage |
-| Events | Push rather than poll | Webhooks and/or SSE on job state changes |
+| Proxy (0.3) | Drop-in image backend for any OpenAI-images client (StoryEngine, Open WebUI, chat frontends, scripts) | OpenAI-compatible `/v1/images/generations`, `/edits`, `/models`; model ids map to presets (a model, a route preference and defaults); possibly an `sdapi` shim for A1111-era tools |
+| Native (frozen at 0.7) | Full-fidelity access for integrations | Canonical `GenerationRequest` including subjects and styles, async jobs, per-model capability discovery, library query, lineage |
+| Events | Push rather than poll | SSE on job state changes from 0.1; webhooks after 1.0 |
 | MCP (optional) | Agentic clients call generation as a tool | Thin MCP server over the native API |
 
 **What a caller gets by going through Lantern instead of a backend directly:** routing and failover, capability-aware defaults, emulated features (batching, hires), provenance, and every output landing in the library.
 
 **Client model:**
 
-- Per-client API tokens.
+- Per-client API tokens (0.3).
 - Per-client budgets and route allowlists, so an integration can be barred from paid routes.
-- Provenance records which client made each request.
-- Clients can attach their own tags or collection ids, so the library can group outputs by the calling tool's context.
+- Provenance records which client made each request, and which of the client's own users asked (OpenAI's `user` field), without Lantern becoming multi-user.
+- Clients can attach their own tags or collection ids, so the library can group outputs by the calling tool's context. A client's outputs are hidden from the default gallery.
+- Interactive clients get a priority lane ahead of batch work.
 
-**StoryEngine integration (exploratory, not designed).** The proxy surface alone gives StoryEngine scene illustration with no Lantern-specific code. Deeper integration would use the native API. Plausible directions:
+**StoryEngine integration (designed; see [StoryEngine Integration](<StoryEngine Integration.md>)).** Lantern owns multi-backend image generation for StoryEngine. StoryEngine's only image connection beyond OpenAI-compatible is Lantern, which fits its own rule that anything else goes through a translating proxy.
 
-- Scene and session ids as library collections.
-- Named character or location subjects backed by reference images, for visual consistency across a story.
-- Webhooks so generated images arrive back in the narrative flow.
+1. **Proxy, at 0.3.** StoryEngine illustrates through the proxy surface with no code of its own. Lantern supplies presets, client tokens, end-user attribution, priority and client collections.
+2. **Native connection, from 0.7.** A Lantern connection kind in StoryEngine carries subjects, styles and reference images. It replaces StoryEngine's planned ComfyUI phase, and StoryEngine's renderer contract converges on Lantern's adapter protocol.
+3. **Character Studio.** StoryEngine keeps the card format and the curation surface. Lantern provides generation, and its test bench is Compare with a subject axis. The two share `@lantern/schema`, `@lantern/client` and `@lantern/react`.
 
-None of this should shape the pre-1.0 schema beyond keeping `inputs[].role: ref` and client tagging in mind.
+StoryEngine reads job events over SSE, so it needs no webhooks. This integration does shape the pre-1.0 schema: subjects, styles, the `style` input role and client attribution all land before the 0.3 freeze.
 
 ## Open questions
 
-- [ ] **Name clearance.** Magic Lantern is also the long-running Canon camera firmware project, well known in photo and video circles. Check the GitHub org, crates.io and npm `lantern`, and a domain before publishing.
+- [ ] **Name clearance.** Magic Lantern is also the long-running Canon camera firmware project, well known in photo and video circles. Check the GitHub org, npm `lantern` (now needed before the shared packages publish at 0.5), and a domain before publishing.
 - [ ] **Lemonade integration depth.** Does `<sd_cpp_extra_args>` pass through Lemonade's `/v1/images/generations` intact? If so, the front door is a viable Tier 1.5 and child-port discovery may be unnecessary.
 - [ ] **orchd relationship.** Should Lantern ask orchd for residency and routing hints, or stay strictly a client of whatever endpoints exist?
-- [ ] **UI framework.** SvelteKit or Solid.
-- [ ] **Licence.** Apache-2.0 to match orchd, or something else.
-- [ ] **Multi-user scope for 1.0.** Single user with a password, or per-user libraries from the start.
+- [x] **UI framework.** React, decided Oct 10, 2026, so components can be shared with StoryEngine. The daemon moved to TypeScript at the same time.
+- [ ] **Licence.** MIT for the shared packages, since StoryEngine admits only MIT-licensed dependencies. For the daemon, MIT as well (one licence) or Apache-2.0 to match orchd.
+- [ ] **Multi-user scope for 1.0.** Single user with a password, or per-user libraries from the start. The implementation plan recommends a single user, with each client's own users recorded per job.
 - [ ] **First proprietary target for the paper test.** An aggregator (fal or Replicate) or a direct vendor.
 - [ ] **Metadata format.** A1111 infotext plus own JSON chunk, or also emit Comfy-style workflow metadata for Comfy routes.
