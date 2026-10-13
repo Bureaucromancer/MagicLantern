@@ -1,6 +1,6 @@
 # Magic Lantern — Design Doc
 
-Sep 25, 2026 · @Ned · Revised Oct 10, 2026: TypeScript and React; StoryEngine integration designed ([StoryEngine Integration](<StoryEngine Integration.md>)) · Oct 12: libraries instead of user accounts, MIT · Oct 12: [design review](<Design Review.md>) folded in
+Sep 25, 2026 · @Ned · Revised Oct 10, 2026: TypeScript and React; StoryEngine integration designed ([StoryEngine Integration](<StoryEngine Integration.md>)) · Oct 12: libraries instead of user accounts, MIT · Oct 12: [design review](<Design Review.md>) folded in · Oct 12: orchd built alongside ([orchd Integration](<orchd Integration.md>))
 
 ## Purpose and scope
 
@@ -15,7 +15,7 @@ Magic Lantern is a self-hosted client for image and video generation that is not
 ### Non-goals
 
 - **Not an inference engine.** It never loads weights.
-- **Not a model lifecycle manager.** Lemonade, orchd or ComfyUI own loading, unloading and residency. The tool asks a backend to generate and, at most, asks whether a model is resident.
+- **Not a model lifecycle manager.** Lemonade, orchd or ComfyUI own loading, unloading and residency. The tool asks a backend to generate and, at most, asks whether a model is resident. It reads that without causing a load, and never asks a manager to load or unload.
 - **Not an image editor.** A post-1.0 annotation layer exists only to produce inputs for editing models: masks, boxes, arrows, reference crops.
 - **Not a video editor.** Extend chains get a shot strip, not a timeline.
 - **Not a training tool.** No LoRA training or dataset management.
@@ -121,7 +121,7 @@ Users think in models (Flux Klein, Z-Image, LTX-2). Backends are routes to those
 - **Defaults per mode:** Turbo at 4 steps and CFG 1; distilled guidance for Flux; frame-count rules per family (4n+1 for Wan, 8n+1 for LTX), which the UI snaps to.
 - **Resolution buckets** and aspect presets.
 - **Routes:** for example "sd-cpp instance X", "Comfy workflow Y", "fal". Each route has its own capability descriptor and cost metadata.
-- **Identity:** a Lantern id plus a fingerprint of the model file, matched automatically when the model reappears, for instance after Lemonade reloads it. A new model is proposed from what the backend reports and confirmed by the user, who picks its family and profile.
+- **Identity:** a Lantern id plus a fingerprint, matched automatically when the model reappears, for instance after Lemonade reloads it. The fingerprint is either the model file as the backend reports it, or a manager's own identity for the model. orchd's model id and definition hash cover the companion files (VAE, text encoders) that sd-server doesn't report. A new model is proposed from what the backend reports and confirmed by the user, who picks its family and profile.
 
 **Precedence.** Values come from five places: request > preset > model overrides > profile > descriptor default. A preset (0.2) is a model, a route preference and defaults under one name. The resolver never silently changes a value the user set; out-of-range values are rejected with a suggested value, and the UI snaps them before submitting.
 
@@ -146,9 +146,18 @@ Adapters are ranked by fidelity. The canonical model is built against the riches
 
 ### Tier 1: sd.cpp native
 
-The reference adapter. `/sdcpp/v1/capabilities` maps almost directly onto a capability descriptor. It covers image and video, LoRA, hires, control, IP-adapter and reference images. A "model" on this backend is really an instance, so the registry records which instance serves which model. Instances can be Lemonade-managed (via Lemonade's front door or the child port) or standalone `sd-server` units.
+The reference adapter. `/sdcpp/v1/capabilities` maps almost directly onto a capability descriptor. It covers image and video, LoRA, hires, control, IP-adapter and reference images. A "model" on this backend is really an instance, so the registry records which instance serves which model. Instances can be standalone `sd-server` units, or run by a manager:
+- Lemonade, through its front door or the child port;
+- orchd, through its native proxy.
 
 Lemonade's children are found through its health endpoint. Each child binds to `127.0.0.1` on Lemonade's machine, so native routes work only when Lantern runs on the same host. On the homelab, the daemon lives beside Lemonade.
+
+orchd proxies the native API (`/orchd/v1/models/{id}/native/*`), so its routes work from anywhere on the LAN.
+- **What Lantern reads:** orchd's management API says which models exist, whether each is loaded, its identity and its capabilities.
+- **What Lantern never does:** send a request through the proxy just to check something, because a request there loads the model.
+- **Cold routes:** a cold orchd route is healthy; it loads on demand.
+
+See [orchd Integration](<orchd Integration.md>).
 
 ### Tier 2: A1111 sdapi
 
@@ -208,7 +217,8 @@ Every generation is a persistent job, and every output carries enough provenance
   - States: queued → submitting → dispatched → running → finished, plus cancel_requested for backends that can't stop a running job. A finished job's outcome is done, failed, refused or cancelled.
   - The queue survives restarts. A rerun is always a new job.
 - **Results are spooled to disk before they are ingested.** Some backends keep results only briefly (sd-server: 10 minutes, in memory), so a crash between the two can't lose them.
-- **Concurrency limits per resource group,** meaning the GPU host: a single GPU box runs one heavy job at a time, even across two backends on that box. Cloud APIs take N.
+- **Concurrency limits per resource group,** meaning the GPU host: a single GPU box runs one heavy job at a time, even across two backends on that box. Cloud APIs take N. Under orchd, orchd weighs each job against chat models on the same GPU; Lantern still sends one job at a time, and shows orchd's reason when a job waits (memory, a model load).
+- **A job turned away before it starts goes back in the queue,** blocked with the backend's reason and a retry time, for instance while orchd has yielded the GPU to a game. It isn't counted as failed.
 - **Visible queue, install-wide,** because the GPU is shared across libraries. Reordering and turn-taking between libraries and clients arrive with Compare (0.3).
 - **Progress normalisation:** sd.cpp polls, Comfy streams, sdapi on sd-server gives nothing (elapsed timer), proprietary APIs give coarse states. Preview frames where the backend supplies them.
 - **Emulation runs here.** Fan-out for `n`, multi-pass hires chains and comparison grids are expanded into child jobs under one parent.
@@ -298,7 +308,8 @@ Rust was the original choice for the daemon, for a single static binary; Python 
 | --- | --- | --- |
 | Dishonest capability descriptors | Backends claim compatibility they don't have | `probe()` per route; cache results; user override |
 | Comfy binding rot | Custom-node updates change workflow shapes | Versioned templates; validate bindings on load; fail loudly, never drop fields silently |
-| sd-server lifecycle coupling | Lemonade unloads the model and the Tier 1 route disappears | Treat "instance gone" as normal; re-route via Lemonade's front door (triggers a load) or fail over |
+| sd-server lifecycle coupling | Lemonade unloads the model and the Tier 1 route disappears | Treat "instance gone" as normal; re-route via Lemonade's front door (triggers a load) or fail over. Under orchd a cold route loads on demand |
+| A manager's policy changes pixels | orchd turns VAE tiling on when memory is tight, which can change the output | Write out every pixel-affecting setting; orchd never changes a value the request sets; record any rewrite a backend reports |
 | Upstream API churn | sd.cpp warns its API changes often; proprietary APIs churn too | Adapter version pinning; contract tests against recorded fixtures |
 | Proprietary cost blowouts | Video APIs are expensive and a compare grid multiplies calls | Pre-submit estimate; per-provider and global caps; confirm above a threshold |
 | Non-deterministic backends | Reproduction is the 0.1 exit criterion, but GPU kernels may not be bit-exact | Measure before building (spike SP1); Reproduce reports identical, near miss or different; environment changes reported separately |
@@ -324,6 +335,7 @@ Local backends reach 1.0 first; proprietary support follows once the job system 
 **Off the milestone track:**
 - **sdapi** is built when someone needs it; it is a worse path to the same engine.
 - **The native API freezes** when StoryEngine 3.0 is scheduled.
+- **The orchd kind** arrives when orchd's image slice runs; orchd is built alongside Lantern.
 
 Even though proprietary adapters come after 1.0, test the canonical schema and descriptor model against at least one proprietary API (fal) on paper before subjects are designed at 0.5. That keeps the abstraction from turning out to be local-only.
 
@@ -362,7 +374,8 @@ StoryEngine reads job events over SSE, so it needs no webhooks. This integration
 
 - [ ] **Name clearance.** Magic Lantern is also the long-running Canon camera firmware project, well known in photo and video circles. It no longer blocks anything: the packages use a personal npm scope (`@bureaucromancer/lantern-*`). Check the GitHub org and a domain before any public launch.
 - [x] **Lemonade integration depth.** Answered by reading the source on Oct 10, 2026; spike SP2 confirms it. Both paths are used: native children, discovered through Lemonade's health endpoint, and the front door, which carries an extra-args block, as the failover.
-- [ ] **orchd relationship.** Should Lantern ask orchd for residency and routing hints, or stay strictly a client of whatever endpoints exist? Deferred past 0.5.
+- [x] **orchd relationship.** Decided Oct 12, 2026: orchd is built alongside Lantern. Lantern reads model state, identity and capabilities from orchd's management API and generates through its native proxy; it never drives loading or unloading. See [orchd Integration](<orchd Integration.md>).
+- [ ] **Where orchd runs.** On the Lemonade host, replacing Lemonade, or on another machine. orchd is NVIDIA-only for now.
 - [ ] **Reproduction tolerance.** How close a re-run must be to count as a near miss. Set from spike SP1's measurements on the homelab.
 - [x] **UI framework.** React, decided Oct 10, 2026, so components can be shared with StoryEngine. The daemon moved to TypeScript at the same time.
 - [x] **Licence.** MIT for everything, decided Oct 12, 2026. It also suits StoryEngine, which admits only MIT-licensed dependencies.

@@ -6,6 +6,7 @@ Oct 10, 2026 · Draft · Companion to the [design doc](<Magic Lantern — Design
 - *Oct 10: the daemon is TypeScript and the UI is React, because Lantern is StoryEngine's image backend ([StoryEngine Integration](<StoryEngine Integration.md>)).*
 - *Oct 12: libraries replace user accounts.*
 - *Oct 12: the [design review](<Design Review.md>)'s decisions and answers are folded in. That adds a prototype phase, re-splits the milestones and trims 0.1. Bracketed references such as (A12) or (D3) point to items in the review.*
+- *Oct 12: orchd is built alongside Lantern instead of after 0.5. The seams the prototype needs for it come from the [orchd integration note](<orchd Integration.md>); references such as (L5) or (O3) point to its items.*
 
 This plan turns the design doc into work. The prototype and 0.1 are broken down to task level; 0.2 and 0.3 to work packages; later milestones are outlines. Sizes are relative: **S** is a day or two, **M** about a week, **L** two weeks or more.
 
@@ -23,16 +24,17 @@ All the decisions that block code are made.
 | Shared packages (D4) | Published under a personal npm scope: `@bureaucromancer/lantern-schema`, `-client` and `-react`. Nothing is published until StoryEngine 3.0 starts; until then StoryEngine uses `link:` dependencies or packed tarballs. Name clearance is off the critical path |
 | First prototype (D1) | A vertical slice against the real sd-server, after spikes SP1 and SP2 |
 | Milestone order (D2) | Split by who needs them: 0.2 is the StoryEngine proxy, 0.3 Compare, 0.5 subjects. sdapi is built only on demand |
-| Homelab (D5) | sd-server runs under Lemonade, so Lantern runs on the Lemonade host (see *Configuration and security*) |
+| Homelab (D5) | sd-server runs under Lemonade, so Lantern runs on the Lemonade host (see *Configuration and security*). The rule is Lemonade's: orchd proxies the native API, so orchd routes work across the LAN |
 | What leaves 0.1 (D3) | Listed under *Deferred from 0.1* |
 | Mock adapter (D6) | A real backend kind, hidden behind `LANTERN_DEV=1` |
 | Metadata format | Lantern always writes its own `lantern` chunk. sd-server writes A1111's `parameters` itself; Lantern's A1111 writer waits for the first backend that doesn't. Comfy-style workflow chunks arrive with Comfy routes |
 | First proprietary target | fal, checked on paper only, off the critical path |
-| orchd | Deferred past 0.5 |
+| orchd | Built alongside Lantern, after the prototype. Lantern reads model state, identity and capabilities from orchd and generates through its native proxy; it never drives orchd's lifecycle. The prototype carries the seams (L1 to L9). The `orchd` manager kind arrives when orchd's image slice runs ([orchd Integration](<orchd Integration.md>)) |
 
 **Still open:**
 - **Reproduction tolerance:** set from SP1's results.
 - **The npm org and package names:** only if you ever want a project scope.
+- **Where orchd runs:** on the Lemonade host, replacing Lemonade, or on another machine. See the integration note's *Decisions for you*.
 
 ## Engineering rules
 
@@ -49,7 +51,7 @@ The design doc's principles, restated as rules that can be checked in review or 
 6. **Every adapter has contract tests against recorded fixtures**, with the backend version recorded alongside.
 7. **Never re-encode backend pixels.** Metadata is inserted at the chunk level; the image data the backend returned is preserved byte for byte.
 8. **Published packages stay light and licence-clean.** StoryEngine will depend on them, so they follow its practice: MIT-compatible licences, exact pinned versions, and an argued case for every dependency.
-9. **Import boundaries are enforced by lint,** with eslint-plugin-boundaries as in StoryEngine. Adapters may import only the schema and adapter helpers, so they can move out of process at 0.7.
+9. **Import boundaries are enforced by lint,** with eslint-plugin-boundaries as in StoryEngine. Adapters may import only the schema and adapter helpers, so they can move out of process at 0.7. Manager kinds follow the same rule.
 
 ## Architecture in code
 
@@ -63,8 +65,9 @@ packages/
   client/      @bureaucromancer/lantern-client: typed HTTP and SSE client for Node and browsers
   react/       @bureaucromancer/lantern-react: components shared with StoryEngine's Character Studio
   server/      the daemon: Fastify routes; engine (registry, resolver, scheduler, dispatcher);
-               store (job store, libraries, asset store, PNG codec); adapters/ (mock, sdcpp,
-               lemonade; later openai, comfy)
+               store (job store, libraries, asset store, PNG codec); adapters/ (mock, sdcpp;
+               later openai, comfy); managers/ (lemonade; later orchd), which discover
+               routes that an adapter serves (L1)
   app/         the Lantern web UI, built with Vite and served by the daemon
 profiles/      built-in model-family profiles (JSON)
 fixtures/      recorded backend exchanges for contract tests
@@ -152,8 +155,8 @@ Lantern is a local app, and a library selector stands in for user accounts. A li
 | --- | --- | --- |
 | `libraries` | id, name, path (relative), created_at, last_opened_at | The registry |
 | `backends` | id, kind, base_url, config, resource_group, concurrency, source (`config` or `ui`), status (`active` or `tombstoned`), health, last_seen | Config backends carry a stable `id` in `lantern.json`, and a removed one becomes a tombstone. `resource_group` defaults to the host (A12) |
-| `models` | id, display_name, family, fingerprint, profile_overrides | `fingerprint` is the model file's path and stem, matched automatically when a model reappears (A26) |
-| `routes` | id, model_id, backend_id, config, priority, cost, descriptor, descriptor_digest, descriptor_fetched_at, probe_results, overrides | |
+| `models` | id, display_name, family, fingerprint, profile_overrides | `fingerprint` is tagged (L4): `{kind: "file", path, stem}` from the backend, or `{kind: "manager", manager, model_id, definition_hash}` where a manager such as orchd knows every file. Matched automatically when a model reappears (A26) |
+| `routes` | id, model_id, backend_id, manager_ref, config, priority, cost, health, load_state, descriptor, descriptor_digest, descriptor_fetched_at, probe_results, overrides | `manager_ref` is the manager's own name for the model (orchd's model id). Health and load state are per route, because one manager serves many (L2) |
 | `lease` | pid, boot_id, heartbeat_at | One row |
 
 **Library database:**
@@ -173,9 +176,11 @@ The `jobs` columns that need explaining:
 - `end_user`: a client's own user, such as a StoryEngine account.
 - `collection`: a client's own grouping, such as a StoryEngine session.
 - `priority` and `queue_rank`: priority puts interactive clients ahead of batch work. `queue_rank` is a fractional index that orders jobs within one lane (A19).
+- `blocked_reason`: `{code, detail?, retry_after?}` (L6). Codes include `routes_down`, `route_missing` and `backend_rejected`, the last for a backend that turned the job away before starting it. The scheduler skips the job until `retry_after`.
 - `route_snapshot`: what ran, as it was when it ran:
   - the model id, family and fingerprint, plus the file's size and modification time;
   - the backend kind and URL;
+  - the manager's identity for the model, where there is one (orchd: model id, definition hash and engine build), which covers the companion files sd-server doesn't report (L4);
   - the generator version, taken from the result;
   - the profile and descriptor digests.
 
@@ -185,9 +190,9 @@ Lineage is a view over `job_inputs` joined to `job_outputs` (parent asset → jo
 
 | State | Meaning |
 | --- | --- |
-| `queued` | Waiting in Lantern's queue. May carry a `blocked_reason` when every route is down or the route is missing; the scheduler skips blocked jobs |
+| `queued` | Waiting in Lantern's queue. May carry a `blocked_reason` when every route is down, the route is missing, or a backend turned the job away before starting it; the scheduler skips blocked jobs |
 | `submitting` | `prepare` is done, the wire request is stored, and the submit is in flight |
-| `dispatched` | The backend accepted the job and its handle is stored; the backend may still have it queued |
+| `dispatched` | The backend accepted the job and its handle is stored. The backend may still have it queued, or a manager such as orchd may be holding it for memory or a load; `JobStatus.waiting` says which (L5) |
 | `running` | The backend is generating |
 | `cancel_requested` | Cancel was asked, but the backend can't stop a running job. Its outputs are discarded when it ends |
 | `finished` | Terminal. `outcome` is done, failed, refused or cancelled |
@@ -195,6 +200,13 @@ Lineage is a view over `job_inputs` joined to `job_outputs` (parent asset → jo
 `outcome_reason` comes from a fixed list: `backend_error`, `backend_lost`, `interrupted`, `ingest_failed`, `route_missing`, `user`, plus the backend's reason for a refusal.
 
 A rerun is always a new row; finished jobs are never reset.
+
+A job the backend fails *before start* goes back to `queued` with a `blocked_reason` instead of finishing (L5). Before start means the engine never received it: orchd yielded or timed out its queue, or sd-server answered 429.
+- The job keeps its seed.
+- Its handle is cleared.
+- `effective` and `wire` are finalised again at the next dispatch.
+
+This is the only transition backwards.
 
 ### Provenance
 
@@ -260,7 +272,9 @@ Every stored request carries a `schema_version`. Upgrade functions bring old rec
         "sampling.distilled_guidance": { "state": "ignored", "reason": "Not used by this model family" },
         "count":                       { "state": "native", "native_max": 8, "emulated_max": 16 }
       },
-      "adapters":   { "lora": { "state": "native", "max": 4, "enum": ["detail-tweaker", "film-grain"] } },
+      "adapters":   { "lora": { "state": "native", "max": 4,
+                                "options": [{ "id": "detail-tweaker", "label": "Detail Tweaker" },
+                                            { "id": "film-grain", "sha256": "…" }] } },
       "passes":     { "hires": { "state": "native" } },
       "extensions": { "sdcpp": { "type": "object", "properties": { "slg_scale": { "type": "number" } } } },
       "control":    { "cancel_queued": true, "cancel_running": false, "progress": "none" }
@@ -274,6 +288,7 @@ Every stored request carries a `schema_version`. Upgrade functions bring old rec
   - Field types come from the schema; descriptors only narrow them, using JSON Schema keywords (`minimum`, `maximum`, `enum`, `multipleOf`). Each route and mode therefore compiles to one Ajv validator.
   - One path grammar covers every field (`inputs.ref.weight`, `passes.hires.scale`), and the list of valid paths is generated from the TypeBox schema.
   - Collections take `{state, min, max, media}`.
+  - LoRA choices are objects, `{id, label?, sha256?, family?, default_weight?, triggers?}` (L8). The validator narrows on `id`; a manager's LoRA library can fill the rest.
 - **Merge rules.** Who may do what:
   - `describe()` defines;
   - probes may only demote;
@@ -302,6 +317,11 @@ Two rules come straight from sd-server's behaviour but apply to every backend:
 - **Always send a concrete seed.** sd-server resolves -1 with `rand()` and never reports the result.
 - **Validate enums strictly.** sd-server quietly substitutes its default for an unknown sampler or scheduler.
 
+A third comes from orchd and applies to every manager: **write out every pixel-affecting setting** (L7).
+- orchd turns VAE tiling on to save memory when a request leaves it unset.
+- So `effective` and `wire` always carry it, as they carry every default from `defaults_by_mode`.
+- A rewrite a backend reports anyway is recorded as `adjusted` in the field report.
+
 **Re-running (A11).**
 - **Reproduce** submits `effective` on the same model. A preflight checks the model fingerprint, LoRA paths and generator version first.
 - **Re-roll** does the same with a new seed.
@@ -327,10 +347,16 @@ export interface Adapter {
 ```
 
 - **`prepare`** is pure, and its output uses `$asset` placeholders that the engine fills in at submit. That keeps megabytes of base64 out of `library.db`.
-- **`JobHandle`** is opaque JSON with a `resumable` flag and an instance fingerprint (base URL plus model path), which is checked before polling resumes.
+- **`HealthReport`** keeps reachability and load state apart (L2): `{ status: ok | degraded | down, load_state: loaded | cold | unknown, detail? }`. A cold route under orchd is healthy and loads on demand.
+- **No method may cause a load (L3).**
+  - `health`, `describe` and the identity check never send a native URL anything a manager would treat as work. Under a manager they are answered from the manager's API.
+  - The sd.cpp adapter's descriptor mapping is a pure function of a capabilities document: a standalone instance fetches its own, and a manager supplies it.
+- **`JobHandle`** is opaque JSON with a `resumable` flag and an instance fingerprint (base URL plus model identity, per L4), which is checked before polling resumes.
   - Async backends (sd.cpp native, Comfy, proprietary) give resumable handles.
   - Synchronous backends (OpenAI-compatible, sdapi) give ephemeral handles that can't survive a restart.
-- **`JobStatus`** carries the backend's state and progress, `{ fraction?, step?, total_steps?, eta_s?, preview? }`.
+- **`JobStatus`** carries the backend's state and progress, `{ fraction?, step?, total_steps?, eta_s?, preview? }`, plus two things a manager adds (L5):
+  - `waiting?: { reason, detail?, queue_position? }` while the job hasn't started. The reason is `memory`, `loading`, `calibrating`, `engine_queue` or `other`;
+  - `started: false` on a failure that happened before the engine received the job.
 - **`FetchedResult`** returns the output bytes plus backend metadata; the engine, not the adapter, ingests them.
 - **Outcomes:** `done`, `failed`, `refused`, `cancelled`.
 - **Naming:** JSON-RPC method names at 0.7 are the same camelCase names.
@@ -343,7 +369,8 @@ export interface Adapter {
   - "Run next" raises a job's priority.
 - **Resource groups (A12).** One semaphore per resource group, keyed by GPU host and defaulting to the backend. A standalone sd-server and a Lemonade on the same box therefore share one slot.
   - Lantern owns the queue: it never submits more than the group can run, so the backend's own queue stays empty.
-  - A job the backend still reports as queued, because another client got there first, shows as "waiting on backend".
+  - Under orchd the group is the orchd instance. orchd keeps its own admission queue, which weighs Lantern's job against chat models Lantern can't see. With one slot, at most one Lantern job waits there, so Lantern's order still holds.
+  - A job the backend still reports as queued, because another client got there first, shows as "waiting on backend". It shows the backend's reason when there is one (L5): orchd says whether it is waiting for memory or loading the model.
 - **Worker loop.** The steps run in this order:
   1. prepare;
   2. store the wire request and move to `submitting`;
@@ -368,7 +395,7 @@ export interface Adapter {
   - Otherwise, or on a `409`, the job moves to `cancel_requested`. A local timeout never frees the slot while the GPU may still be busy.
 - **Events (A31).**
   - An in-process bus feeds the SSE endpoint. Event ids are `<boot id>:<seq>`, kept in a ring buffer. A client that reconnects with an unknown id gets `reset` and refetches.
-  - Event types: `job.updated`, `job.progress`, `asset.created`, `backend.health`, `reset`.
+  - Event types: `job.updated`, `job.progress`, `asset.created`, `backend.health` (with each route's load state), `reset`.
   - Progress events carry a preview URL, never image bytes. Previews live in memory only.
   - The stream sends keepalives and `X-Accel-Buffering: no`.
 
@@ -406,7 +433,7 @@ Shaped as the eventual public native API from day one. Install-wide resources si
 | `GET` / `POST /api/v1/libraries`, `PATCH /api/v1/libraries/{lib}` | List (with disk usage), create, rename |
 | `GET /api/v1/models`, `GET /api/v1/models/{id}` | Models with profiles, routes and effective descriptors |
 | `GET /api/v1/backend-kinds` | Backend kinds and their config JSON Schema, for the add form (A26) |
-| `POST /api/v1/backends/detect` | Autodetect sd-server on port 1234 and Lemonade's health endpoint (A32) |
+| `POST /api/v1/backends/detect` | Autodetect from a list of probes (A32, L9): sd-server on port 1234 and Lemonade's health endpoint; later orchd's `/orchd/v1/healthz`, probed by path because its port, 11434, is also Ollama's |
 | `GET` / `POST /api/v1/backends`, `POST /api/v1/backends/{id}/refresh` | Backend registry; refresh re-runs `describe()` |
 | `GET /api/v1/queue` | The live queue across libraries. Other libraries' jobs are collapsed to library, mode, state and ETA |
 | `GET /api/v1/events` | SSE, resumable with `Last-Event-ID` |
@@ -440,6 +467,7 @@ The OpenAI-compatible proxy (`/v1/images/generations`, `/v1/models`) arrives at 
 - **Lantern runs on the Lemonade host (D5).**
   - Lemonade binds each sd-server child to `127.0.0.1` on its own machine. Native routes therefore work only from the same box, or from the same network namespace if Lemonade is containerised.
   - So on the homelab the daemon lives beside Lemonade, and other devices use it over the LAN, which makes the protections above day-one requirements.
+  - The constraint is Lemonade's. orchd proxies the native API at `/orchd/v1/models/{id}/native/*`, so orchd routes work across the LAN, with orchd's API key as the backend's secret. Where orchd runs is still open (see the [integration note](<orchd Integration.md>)).
 - **Secrets.** API keys and backend secrets never appear in API responses.
 
 ### Testing
@@ -448,7 +476,7 @@ The OpenAI-compatible proxy (`/v1/images/generations`, `/v1/models`) arrives at 
 | --- | --- |
 | Schema | Validation tests against the emitted JSON Schema, including that an unknown field returns 422; schema-version upgrade tests from stored fixtures |
 | Resolver | Table tests: descriptor × request → field report and effective request, as Vitest snapshots |
-| Adapters | Contract tests: recorded HTTP exchanges in `fixtures/` replayed through undici's `MockAgent`. `lantern dev record` captures new fixtures from a live backend |
+| Adapters | Contract tests: recorded HTTP exchanges in `fixtures/` replayed through undici's `MockAgent`. `lantern dev record` captures new fixtures from a live backend. The sd.cpp adapter's tests also run with a path-prefixed base URL (L1) |
 | Engine | Driven by the mock adapter, including a kill and restart mid-job, and a crash between completion and ingest |
 | End to end | Playwright smoke test: daemon plus mock adapter plus built UI |
 | Live | Opt-in (`LANTERN_LIVE_SDCPP=<url>`): runs the reproduction test against the homelab |
@@ -460,7 +488,8 @@ The OpenAI-compatible proxy (`/v1/images/generations`, `/v1/models`) arrives at 
   - sd-server-like: resumable, 10-minute retention, no cancelling while running;
   - synchronous with ephemeral handles;
   - a different model appearing on the same port;
-  - `404` and `410` for lost jobs.
+  - `404` and `410` for lost jobs;
+  - orchd-like: cold routes that load on submit, a wait before start with reasons, and rejections before start (a yield, a queue timeout).
 
 CI (GitHub Actions): typecheck; ESLint, including import boundaries; Prettier; Vitest; Playwright; the OpenAPI drift check; the backend-name grep. Release builds an OCI image (amd64 and arm64) and a tarball.
 
@@ -475,7 +504,14 @@ A thin vertical slice against the real sd-server under Lemonade, in the final re
   - the resolver, with field report and seed handling.
 - **Backends:**
   - the sd.cpp adapter: describe, prepare, submit, poll, fetch;
-  - Lemonade discovery.
+  - Lemonade discovery, as the first manager kind (L1).
+- **orchd seams** (L1 to L9 in the [integration note](<orchd Integration.md>)), as types and tests only. There is no orchd kind yet.
+  - managers separate from the sd.cpp adapter;
+  - load state in health;
+  - tagged model identity;
+  - waits and rejections before start;
+  - structured block reasons;
+  - LoRA choices as objects.
 - **Storage:**
   - one library in the final layout, behind the `/libraries/{lib}` routes;
   - the job store and the four stored payloads;
@@ -507,7 +543,7 @@ Exit criterion: *reproduce any output from its stored request*. Concretely, gene
 
 | # | Task | Size |
 | --- | --- | --- |
-| SP1 | sd-server spike, on the homelab under Lemonade. Run the native API by hand and record fixtures. **Determinism:** same seed twice, same pixels? Measure the perceptual distance when not, and set the reproduction tolerance. **Batches:** does image *k* use seed + *k*, and can it be reproduced as a batch of one? **Metadata:** is sd-server's `parameters` chunk valid A1111 infotext? **Failures:** what happens when the instance goes away mid-job? | S |
+| SP1 | sd-server spike, on the homelab under Lemonade. Run the native API by hand and record fixtures. **Determinism:** same seed twice, same pixels? Measure the perceptual distance when not, and set the reproduction tolerance. **Batches:** does image *k* use seed + *k*, and can it be reproduced as a batch of one? **Metadata:** is sd-server's `parameters` chunk valid A1111 infotext? **Failures:** what happens when the instance goes away mid-job? **For orchd too** (the integration note's *Facts in dispute*): does `/sdcpp/v1/capabilities` answer on the pinned build? Does cancelling a generating job work or return `409`, and what does `cancel_generating` say? Does any step progress appear? Do tiled and untiled VAE decodes give the same pixels? | S |
 | SP2 | Lemonade spike. Does a client's own `<sd_cpp_extra_args>` block override the one Lemonade derives? Does the edits route honour it? Unload a model and load another: does the new child reuse the old port? Can Lantern reach the children from where it will run, including the network namespace if Lemonade is containerised? | S |
 | SP3 | fal paper check: hand-write descriptors for two or three fal models and note what doesn't fit. Off the critical path; any time before 0.5 | S |
 
@@ -552,10 +588,10 @@ Much of this phase can be lifted from StoryEngine: workspace layout, TypeScript 
 
 | # | Task | Size |
 | --- | --- | --- |
-| EN1 | Adapter interface per A14, and the normalised status types | S |
-| EN2 | Mock adapter with behaviour profiles, behind `LANTERN_DEV` | M |
-| EN3 | Scheduler across libraries; resource-group semaphores; blocked jobs | M |
-| EN4 | The job state machine, the single state-transition function, SSE with resumable event ids | M |
+| EN1 | Adapter interface per A14, and the normalised status types, including load state, waits before start and failures before start (L2, L5) | S |
+| EN2 | Mock adapter with behaviour profiles, the orchd-like one included, behind `LANTERN_DEV` | M |
+| EN3 | Scheduler across libraries; resource-group semaphores; blocked jobs with structured reasons and `retry_after` (L6) | M |
+| EN4 | The job state machine, including the return to `queued` after a failure before start (L5); the single state-transition function; SSE with resumable event ids | M |
 | EN5 | Restart recovery, the ingest spool, cancellation | M |
 | EN6 | Job endpoints: submit with idempotency, cancel, reproduce, re-roll | S |
 
@@ -568,8 +604,8 @@ The native API is async: `POST /sdcpp/v1/img_gen` returns a job id, `GET /sdcpp/
 - **One route per instance.** An sd-server serves one model, loaded at startup. The instance can't switch models over HTTP; Lemonade does that by starting a new child.
 - **Spool results promptly.** Jobs live only in sd-server's memory and are purged 10 minutes after they finish; after that the server returns `410`, then `404`. Results arrive in the same response as the final status, so `status` and `fetchResult` share one call, and the engine spools them before ingesting. sd-server's job ids embed a timestamp (`job_<hexts>_<seq>`), so a restarted instance won't answer with another job's result.
 - **Progress means steps, and only with previews on.** The job reports `step` and `total_steps` only while a preview is enabled. Lemonade's pinned build predates native-API previews, so the homelab shows an elapsed timer until Lemonade updates. Where previews exist, the adapter asks for the cheap `proj` preview. Upstream PR [#1884](https://github.com/leejet/stable-diffusion.cpp/pull/1884) would add real progress.
-- **Check the model's identity before every submit and resume.** Lemonade gives children the first free port from 8001 upward. After an unload and a load, a different model can answer on a port Lantern already knows.
-- **Detect features; don't check versions.** The adapter reads `features_by_mode` and treats a missing route as an absent capability.
+- **Check the model's identity before every submit and resume.** Lemonade gives children the first free port from 8001 upward. After an unload and a load, a different model can answer on a port Lantern already knows. Under a manager that routes by model id, as orchd does, identity comes from the manager's API instead, and the native URL is never touched to check it (L3).
+- **Detect features; don't check versions.** The adapter reads `features_by_mode` and treats a missing route as an absent capability. That includes cancelling a running job: `control.cancel_running` follows `cancel_generating`, which the two projects' readings disagree on (SP1).
 - **Treat limits as advisory.** `capabilities.limits` is hard-coded and, apart from the upscale cap, not enforced. Profile constraints matter more.
 
 **Field mapping (images).** Every image mode maps to `img_gen`. The canonical mode decides which inputs are sent.
@@ -593,12 +629,12 @@ The native API is async: `POST /sdcpp/v1/img_gen` returns a job id, `GET /sdcpp/
 
 | # | Task | Size |
 | --- | --- | --- |
-| SD1 | Capabilities client and `describe()`: a mode map from `features_by_mode` and `defaults_by_mode`; vocabulary mapping; LoRAs as enums; extension schema; `control` flags | M |
+| SD1 | Capabilities client and `describe()`, the mapping a pure function of the capabilities document so a manager can supply it (L3): a mode map from `features_by_mode` and `defaults_by_mode`; vocabulary mapping; LoRAs as enums; extension schema; `control` flags | M |
 | SD2 | `prepare`: the mapping above, with a wire-request snapshot per mode | M |
-| SD3 | Job lifecycle: submit, poll, map states, step progress where previews exist, `404` and `410` as `backend_lost`, back off on `429`, cancel only while queued | M |
+| SD3 | Job lifecycle: submit, poll, map states, step progress where previews exist, `404` and `410` as `backend_lost`, `429` as a failure before start, cancel running jobs only where `cancel_generating` says so | M |
 | SD4 | Results: decode the images, parse sd-server's `SDCPP` metadata (seed, generator version and commit) into `backend_response`, record per-output seeds | S |
-| SD5 | Instance identity and health: liveness from `GET /`, the fingerprint check before submit and resume, and the registry proposal (name, family guess with confidence, profile) for A26's add flow | S |
-| SD6 | Lemonade discovery: a `lemonade` backend kind that polls `/api/v1/health` and adds or retires native routes as sd-cpp models load and unload | M |
+| SD5 | Instance identity and health: liveness from `GET /` on a standalone instance, the fingerprint check before submit and resume, and the registry proposal (name, family guess with confidence, profile) for A26's add flow. Under a manager, liveness and identity come from the manager | S |
+| SD6 | Lemonade discovery: a `lemonade` manager kind (L1) that polls `/api/v1/health` and adds or retires native routes as sd-cpp models load and unload. It hands the sd.cpp adapter a base URL and nothing else, so orchd's kind can take the same shape | M |
 | SD8 | Fixtures and contract tests against Lemonade's pinned sd.cpp build | M |
 
 Exit: txt2img, img2img, inpaint (with an uploaded mask) and LoRA work against a Lemonade-managed sd-server. A standalone sd-server uses the same adapter, configured by URL, but isn't tested on the homelab.
@@ -667,7 +703,7 @@ Exit: a StoryEngine session illustrates through Lantern.
 - **Compare.**
   - A parent job whose axes (model, route, sampler, CFG, seed, steps, prompt search-and-replace) expand into child jobs.
   - The result is an interactive grid view plus an optional composite asset.
-  - The scheduler groups children by model, because on a Lemonade box every model switch is a load.
+  - The scheduler groups children by model, because on a Lemonade or orchd box every model switch is a load. orchd leaves this to its clients.
   - A cost estimate is shown before submission, so the path exists before paid routes do.
 - **Fairness and reorder.** Lane rotation, drag to reorder, and "run next".
 - **Multi-route registry and failover.**
@@ -677,6 +713,7 @@ Exit: a StoryEngine session illustrates through Lantern.
   - It is a Tier 3 route carrying the full parameter set in a single-line extra-args block. It is synchronous, with ephemeral handles and no progress.
   - It loads the model on demand, which is what makes it the natural failover when a native child disappears.
   - Two costs: routing to another model evicts the current one, and its edits route forwards only the first image.
+  - orchd routes don't need it: a cold orchd route loads on demand itself.
 
 Exit: one-action cross-model comparison, and failover between two routes.
 
@@ -689,6 +726,10 @@ Exit: one-action cross-model comparison, and failover between two routes.
   - The outbound OpenAI-compatible adapter: a narrow default descriptor that users can extend.
   - Crop and theming in the shared components.
 - **sdapi:** only when someone needs it.
+- **orchd kind:** when orchd's image slice runs. orchd's roadmap puts it right after its M1.
+  - A manager kind over orchd's management API and event stream. Routes are orchd model ids, served by the sd.cpp adapter through orchd's native proxy.
+  - Identity, load state and capabilities come from `GET /orchd/v1/models/{id}`; nothing is polled through the proxy.
+  - Lantern's priority is passed on as `X-Orchd-Priority`: `interactive` for interactive clients, `batch` for Compare's children.
 - **0.7 Comfy and out-of-process adapters.**
   - Comfy: the binding-manifest format and validation on load, the import assistant, websocket progress.
   - Out-of-process adapters: JSON-RPC over stdio and HTTP, with a small Python reference adapter as proof.
@@ -724,6 +765,8 @@ The plan's proposals, accepted in the design review and applied to the design do
 12. Crop on inputs (A7).
 13. The seed rules (A1).
 
+The [orchd integration note](<orchd Integration.md>)'s seams (L1 to L9) were applied to the design doc the same day.
+
 ## Appendix: sd-server and Lemonade facts
 
 Read from source on Oct 10, 2026: stable-diffusion.cpp master at `2988060` (`examples/server/`, with [`api.md`](https://github.com/leejet/stable-diffusion.cpp/blob/master/examples/server/api.md) as the best single reference) and Lemonade at `0c8169f`. None of it has been run yet; spikes SP1 and SP2 verify it.
@@ -732,7 +775,7 @@ Read from source on Oct 10, 2026: stable-diffusion.cpp master at `2988060` (`exa
 
 - Routes: `GET capabilities`, `POST img_gen`, `POST vid_gen`, `GET jobs/{id}`, `POST jobs/{id}/cancel`, and a synchronous `POST upscale`. There is no route to list jobs.
 - Submitting returns `202` with the job id, in the form `job_<hexts>_<seq>`. Errors: `400` for a bad request or a mode the instance doesn't support; `429` when 64 jobs are pending.
-- Job states: `queued`, `generating`, `completed`, `failed`, `cancelled`. Cancelling a generating job returns `409`.
+- Job states: `queued`, `generating`, `completed`, `failed`, `cancelled`. Cancelling a generating job returns `409`. orchd's documents read the API reference as allowing it behind a `cancel_generating` feature flag; SP1 settles it on the pinned build.
 - Retention: jobs are kept in memory only. A finished job is purged after 600 seconds, returns `410` for another 600, then `404`. Restarting the server loses everything.
 - Capabilities report:
   - the model as `{name, stem, path}`;
