@@ -1,8 +1,10 @@
 # Magic Lantern × StoryEngine — What Would Shift
 
-Oct 10, 2026 · Accepted · Read with the [design doc](<Generative Media Workbench — Design Doc.md>) and the [implementation plan](<Implementation Plan.md>)
+Oct 10, 2026 · Accepted · Read with the [design doc](<Magic Lantern — Design Doc.md>) and the [implementation plan](<Implementation Plan.md>)
 
 *Status: the integration is explicit, and React and TypeScript were chosen on Oct 10, 2026. The changes below have been folded into the design doc and the implementation plan. This note keeps the reasoning.*
+
+*Oct 12: the [design review](<Design Review.md>) moved the proxy to 0.2 and tied the native API freeze to StoryEngine 3.0. It also put the shared packages under a personal npm scope, published when StoryEngine 3.0 starts. The milestones and names below are updated to match.*
 
 **The question:** suppose there is an explicit intent that StoryEngine (SE) sends its image generation through a full Lantern instance, and that Lantern shares code with SE's Character Studio. What changes?
 
@@ -21,19 +23,19 @@ SE today calls OpenAI's `/images/generations` and expects base64 inline, with `n
 
 | Need | The SE fact behind it | Change to Lantern |
 | --- | --- | --- |
-| Client tokens | SE stores an `apiKey` on a system connection. Lantern 0.1 only has password and cookie auth | Per-client bearer tokens move from post-1.0 to 0.3 |
+| Client tokens | SE stores an `apiKey` on a system connection. Lantern 0.1 only has password and cookie auth | Per-client bearer tokens move from post-1.0 to 0.2 |
 | Presets | SE binds one model id to the "Making images" job and shouldn't know about steps, sampler or size | The registry gains named presets: model, route preference and defaults. `/v1/models` lists them |
 | Honest errors | SE's placeholders tell "refused" apart from "didn't come out" | A refusal or invalid request returns `400`; an unavailable backend or `backend_lost` returns `503`; a full queue returns `429` |
 | No hidden retries | SE's open question E7: retries are operator policy, set per connection | Already true: failover happens only before a job starts. The response names the route that was used |
-| End-user attribution | SE has several users (handles); one connection serves them all | Accept OpenAI's `user` field and store it as `end_user` on the job. Lantern itself stays single-user |
+| End-user attribution | SE has several users (handles); one connection serves them all | Accept OpenAI's `user` field and store it as `end_user` on the job, in the library the client token is bound to. Lantern has no accounts of its own; libraries stand in for them |
 | Priority | One GPU: a story picture shouldn't wait behind a 36-cell compare grid | Add `priority` to jobs, so interactive clients go ahead of batch work |
 | Cancel on disconnect | SE abandons requests when a tab closes | If a client disconnects while its job is still queued, the job is cancelled |
-| Library scoping | SE keeps renditions out of its own library on purpose ("a picture shouldn't outlive its story") and stores its own copy | Client outputs go into a per-client collection, hidden from the default gallery. A `client_copy` retention class may be evicted; provenance is kept |
-| Packaging | SE ships as an OCI image with compose | A Lantern OCI image in 0.3, and a compose example that runs both |
+| Library scoping | SE keeps renditions out of its own library on purpose ("a picture shouldn't outlive its story") and stores its own copy | Client outputs go to the library the client's token is bound to: by default a "StoryEngine" library, not yours. Within it there is a collection per SE session. A `client_copy` retention class may be evicted; provenance is kept |
+| Packaging | SE ships as an OCI image with compose | A Lantern OCI image in 0.1, and a compose example that runs both at 0.2 |
 
 The SE connection should set **Makes pictures** and **Sends a seed** to yes. Lantern always honours seeds, which also fixes SE's current blind spot that "nothing in the endpoint's answer says whether it did".
 
-0.3's exit criterion gains: *a StoryEngine session illustrates through Lantern, with failover between two routes*.
+0.2's exit criterion: *a StoryEngine session illustrates through Lantern*.
 
 ## Step 2: A native Lantern connection in StoryEngine
 
@@ -55,7 +57,7 @@ In SE's own terms, the native connection is "the day `Provider` gets a second ki
 
 **What shifts in Lantern:**
 
-- **The native API stabilises earlier.** Instead of "stabilise after 1.0", v1 is frozen at 0.7, because SE builds against it. Webhooks become unnecessary for this client: SE's server can consume Lantern's SSE stream, and SE has no routes for inbound callbacks.
+- **The native API stabilises earlier.** Instead of "stabilise after 1.0", v1 is frozen when SE 3.0 is scheduled, because SE builds against it. Webhooks become unnecessary for this client: SE's server can consume Lantern's SSE stream, and SE has no routes for inbound callbacks.
 - **Subjects and styles become canonical concepts** rather than "exploratory, not designed". Proposed shape:
 
   ```
@@ -78,7 +80,7 @@ In SE's own terms, the native connection is "the day `Provider` gets a second ki
   - `SourceRect` (normalised 0 to 1) for crops and regions;
   - SE's split between likeness and style (`MediaRole` `reference` versus `style`), which becomes a new `style` input role in Lantern.
 
-  Design these in the paper test, before the 0.3 schema freeze. Implement them in 0.5, alongside Compare.
+  Reserve them as experimental fields from 0.1, then design and implement them at 0.5, alongside Compare's subject axis.
 - **Prompt budgeting.** SE ranks prompt fragments and drops the lowest-ranked to fit `maxPromptChars`. The real limit is the text encoder's, which is a model fact Lantern knows: 77 CLIP tokens for SD1.5 and SDXL, far more for T5-based models.
   - At minimum, descriptors expose that limit so SE can budget against it.
   - Better: the canonical prompt optionally accepts `fragments: [{ text, rank, required }]`, Lantern does the dropping, and the field report records what was dropped.
@@ -99,9 +101,11 @@ In SE's own terms, the native connection is "the day `Provider` gets a second ki
 
 ### Shared packages, published from the Lantern repo
 
-- **`@lantern/schema`:** the canonical request, descriptor and subject types, plus JSON Schema.
-- **`@lantern/client`:** a typed API client for Node and the browser. SE's server uses it.
-- **`@lantern/react`:** components:
+Packages are published under the personal scope `@bureaucromancer`.
+
+- **`lantern-schema`:** the canonical request, descriptor and subject types, plus JSON Schema.
+- **`lantern-client`:** a typed API client for Node and the browser. SE's server uses it.
+- **`lantern-react`:** components:
   - an image slot with non-destructive crop;
   - the descriptor-driven parameter form;
   - the compare and test-bench grid;
@@ -109,9 +113,9 @@ In SE's own terms, the native connection is "the day `Provider` gets a second ki
   - the provenance viewer;
   - the subject editor.
 
-  They are themed through CSS variables that each app sets from its Tailwind `@theme`, and built on Radix, which SE already intends to use.
+  They are themed through CSS variables that each app sets from its Tailwind `@theme`, and built on Radix, which SE already intends to use. They take props and callbacks rather than a client, so SE can feed them through its own server instead of putting Lantern tokens in the browser.
 
-Publishing to npm in 0.5 means name clearance moves from "before 1.0" to "before 0.5". A personal scope avoids the question entirely.
+Nothing is published until SE 3.0 starts; until then SE uses `link:` dependencies or packed tarballs. The personal scope takes name clearance off the critical path.
 
 ### The stack decision this forced (React and TypeScript, chosen Oct 10)
 
@@ -122,13 +126,13 @@ Publishing to npm in 0.5 means name clearance moves from "before 1.0" to "before
 - Lantern has no UI code yet, so the switch costs nothing.
 - SE's own tech-stack note calls Svelte "a genuine alternative", with the choice weighted by preference. Shared code is the reason that tips Lantern the other way.
 
-**Daemon: TypeScript instead of Rust (recommended).** The boundary is HTTP either way, so Rust doesn't prevent sharing. But:
+**Daemon: TypeScript instead of Rust.** The boundary is HTTP either way, so Rust doesn't prevent sharing. But:
 
 - With TypeScript, the schema is written once, in TypeBox, which emits JSON Schema directly. That is SE's own approach. With Rust, the chain is Rust types, then schemars, then JSON Schema, then TypeScript codegen, kept in sync by CI.
 - It means one toolchain and one set of conventions, for a project with one developer.
 - SE has already solved deployment for Node: an OCI image, and a tarball with a systemd unit.
 - The design doc's case for Rust was thin: "adapter work is HTTP and JSON", and the Python alternative wasn't "heavy enough to decide". Integrating with SE is the first concrete reason pointing either way.
-- What it costs: the single static binary and a lower memory footprint. Node's single-executable apps narrow the first gap.
+- What it costs: the single static binary and a lower memory footprint. sharp, a native dependency, also rules out Node's single-executable apps.
 - The resulting stack mirrors SE's: Node 26, Fastify, TypeBox, `node:sqlite` and sharp. The plan's crate layout becomes a pnpm workspace split the way SE's is.
 
 If you keep Rust, sharing still works through generated JSON Schema and a generated TypeScript client. The React components then live in a TypeScript package inside the Lantern repo.
@@ -136,8 +140,7 @@ If you keep Rust, sharing still works through generated JSON Schema and a genera
 ### Licence
 
 - **Constraints from SE:** SE's practice admits MIT-licensed dependencies, pinned to exact versions. Its SDK is AGPL with no linking exception.
-- **Shared packages:** MIT, or MIT OR Apache-2.0.
-- **Lantern itself** can be either; it talks to SE over HTTP, so no AGPL obligations reach it.
+- **Lantern, shared packages included:** MIT (decided Oct 12). Lantern talks to SE over HTTP, so no AGPL obligations reach it.
 - **Moving code from SE:** it has to be your own. You are SE's only human author, so you can relicense it. `packages/server` also contains AGPL-3.0-only third-party files (listed in `THIRD_PARTY_NOTICES.md`), and those can't move.
 
 ## StoryEngine problems found along the way
@@ -155,16 +158,16 @@ Both matter whether or not Lantern happens. The first is urgent.
    - Nothing writes `crop` or `portraitCrop`.
    - Besides losing pixels, re-encoding strips embedded metadata. That includes Lantern's `lantern` PNG chunk, which could otherwise carry a reference image's full recipe inside the card for free. This assumes SE keeps media bytes verbatim in the card's `seMd` chunk; that needs checking.
 
-## Changes to the Lantern plan (applied Oct 10)
+## Changes to the Lantern plan (applied Oct 10, revised Oct 12)
 
 | Area | Change | When |
 | --- | --- | --- |
-| Decisions | UI in React instead of SvelteKit. Daemon in TypeScript (recommended) instead of Rust. MIT or dual licence for shared packages. Name clearance before 0.5 | Before SK1 |
-| First migration | `jobs.priority`, `jobs.end_user`, `library_entries.collection` and `library_entries.retention` | SK3 |
-| Schema | `style` input role. Subjects and styles drafted in paper test SP3, aligned with SE's shapes | Before the 0.3 freeze |
-| 0.3 | Proxy surface (`/v1/images/generations`, `/v1/models`), client tokens, presets, error mapping, OCI image. Exit includes an SE session illustrating through Lantern | 0.3 |
-| 0.5 | Subject resolution, Compare with a subject axis, `@lantern/react` published | 0.5 |
-| 0.7 | Native API v1 frozen, `@lantern/client` published. SE's Lantern connection kind can start | 0.7 |
+| Decisions | UI in React instead of SvelteKit. Daemon in TypeScript instead of Rust. MIT throughout. Personal npm scope | Before SK1 |
+| First migrations | `jobs.priority`, `jobs.end_user`, `jobs.collection` and `assets.retention`, in the library database | SK3 |
+| Schema | `style` input role from 0.1. Subjects and styles reserved as experimental fields, aligned with SE's shapes | 0.1; designed at 0.5 |
+| 0.2 | Proxy surface (`/v1/images/generations`, `/v1/models`), client tokens, presets, error mapping, compose example. Exit: an SE session illustrating through Lantern | 0.2 |
+| 0.5 | Subject resolution, and a subject axis in Compare (Compare itself lands at 0.3) | 0.5 |
+| SE 3.0 | Native API v1 frozen; packages published. SE's Lantern connection kind starts | When SE 3.0 is scheduled |
 | Design doc | The "StoryEngine integration (exploratory)" section becomes a designed one. "None of this should shape the pre-1.0 schema" is reversed. The proxy surface and client model leave the post-1.0 list | Now |
 
-**Timing:** the Studio is SE's 3.0, and SE is in the 1.0 alphas. Lantern's native API at 0.7 should come before SE starts 3.0. The proxy step can start as soon as Lantern reaches 0.3.
+**Timing:** the Studio is SE's 3.0, and SE is in the 1.0 alphas. Lantern's native API freezes when SE 3.0 is scheduled, so it's ready when the Studio starts. The proxy step can start as soon as Lantern reaches 0.2.
