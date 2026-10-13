@@ -195,9 +195,7 @@ The two document sets read sd-server differently. One set of SP1 runs settles ev
 
 ## Housekeeping in orchd
 
-The stale `docs/orchd-design-docs.tar.gz` was removed with the relicensing. Not yet done:
-- The implementation plan refers to "the manager", a tool above orchd. It cites ADR 0005, which never mentions it.
-- Git tracks `readme.md`, while the file on disk is `README.md`. It matters only on Linux.
+The stale `docs/orchd-design-docs.tar.gz` was removed with the relicensing, and the tracked `readme.md` was renamed to `README.md`. Not yet done: the implementation plan refers to "the manager", a tool above orchd. It cites ADR 0005, which never mentions it.
 
 ## Changes applied
 
