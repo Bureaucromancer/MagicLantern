@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "./packages/schema" },
+    { "path": "./packages/client" },
+    { "path": "./packages/react" },
+    { "path": "./packages/server" },
+    { "path": "./packages/app" },
+
+    // Tests are excluded from every build project above so `tsc -b` never emits
+    // them into `dist` (the packages ship `dist`). They are typechecked by a
+    // per-package spec project instead, which emits nothing.
+    //
+    // Listing the spec projects *here* is also what keeps ESLint working:
+    // `projectService` finds a file through the nearest `tsconfig.json` and the
+    // projects it references, and this is the nearest one above an excluded
+    // test. Anywhere else, every test file is "not found by the project service".
+    { "path": "./packages/schema/tsconfig.spec.json" },
+    { "path": "./packages/client/tsconfig.spec.json" },
+    { "path": "./packages/react/tsconfig.spec.json" },
+    { "path": "./packages/server/tsconfig.spec.json" },
+    { "path": "./packages/app/tsconfig.spec.json" },
+
+    // The app's vite.config.ts, which runs in Node and so cannot share the
+    // browser build project (see packages/app/tsconfig.json). Referenced here
+    // for the same two reasons as the spec projects: `tsc -b` checks it, and
+    // ESLint's projectService finds it.
+    { "path": "./packages/app/tsconfig.node.json" }
+  ]
+}

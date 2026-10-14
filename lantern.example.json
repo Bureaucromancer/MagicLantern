@@ -1,0 +1,70 @@
+// Magic Lantern configuration (lantern.json).
+//
+// Every key is optional: delete this file and the values below are what you
+// get, which is a working install bound to this machine only. JSON has no
+// comments, so strip these lines before using it as your lantern.json.
+//
+// Where Lantern looks for it: --config <path>, else LANTERN_CONFIG, else
+//   Linux    $XDG_CONFIG_HOME/lantern/lantern.json (or ~/.config/lantern/lantern.json)
+//   macOS    ~/Library/Application Support/Lantern/lantern.json
+//   Windows  %APPDATA%\Lantern\lantern.json
+//
+// Environment variables override this file (and the startup log says which did):
+// LANTERN_HOST, LANTERN_PORT, LANTERN_DATA_DIR, LANTERN_APP_ROOT,
+// LANTERN_AUTH_MODE, LANTERN_TRUST_NETWORK (1 or true), LANTERN_COOKIE_SECURE,
+// LANTERN_ALLOWED_HOSTS and LANTERN_ALLOWED_ORIGINS (comma-separated) and
+// LANTERN_LOG_LEVEL. An empty variable counts as unset.
+//
+// LANTERN_PASSWORD (for containers) sets the password at start instead of
+// `lantern set-password`: it is checked against the stored password and
+// stored only when it differs. It is refused with auth.mode "none".
+{
+  // The bind address. LOOPBACK BY DEFAULT: with auth mode "none", anyone who
+  // can reach the port can use Lantern, so binding beyond this machine (e.g.
+  // "0.0.0.0") is refused unless a password is set or auth.trustNetwork is true.
+  "host": "127.0.0.1",
+
+  // One port for the API and the app. 0 picks a free one.
+  "port": 7600,
+
+  // Where libraries and databases live. null means the platform's data directory:
+  //   Linux    $XDG_DATA_HOME/lantern (or ~/.local/share/lantern)
+  //   macOS    ~/Library/Application Support/Lantern
+  //   Windows  %LOCALAPPDATA%\Lantern
+  // --data <dir> outranks this and LANTERN_DATA_DIR.
+  "dataDir": null,
+
+  // The built app to serve. null serves the app built beside the server, if
+  // there is one, and otherwise the API alone. A path without index.html is a
+  // startup error.
+  "appRoot": null,
+
+  "auth": {
+    // "none", "password", or null. null means "password" once a password has
+    // been set with `lantern set-password`, and "none" before that.
+    "mode": null,
+
+    // Allow a non-loopback bind with mode "none" (a trusted LAN). Every start
+    // then logs a warning saying so.
+    "trustNetwork": false,
+
+    // Mark the session cookie Secure. Set it when TLS terminates in front of
+    // Lantern; it is never guessed from the bind address, because a Secure
+    // cookie over plain HTTP is silently dropped and sign-in appears to fail.
+    "cookieSecure": false
+  },
+
+  // Extra Host names to accept (hostname only), e.g. a reverse proxy's or a
+  // LAN name. Loopback names and the bind address are always accepted. The
+  // check stops DNS-rebinding attacks from web pages.
+  "allowedHosts": [],
+
+  // Extra Origins to accept (scheme://host[:port]), e.g. "http://localhost:5173"
+  // for the Vite dev server. Stops other web pages from calling the API.
+  "allowedOrigins": [],
+
+  "log": {
+    // fatal, error, warn, info, debug, trace or silent. Logs are JSON lines.
+    "level": "info"
+  }
+}

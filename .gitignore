@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 Magic Lantern contributors
+
+node_modules/
+dist/
+# The app emits declarations here because Vite owns its dist/.
+dist-types/
+*.tsbuildinfo
+coverage/
+.vite/
+.vitest/
+
+# The development data directory (`pnpm dev` passes --data ../../data). It holds
+# databases and images, which are the user's, never the repository's.
+data/
+
+# A local config, if someone keeps one at the root while developing.
+lantern.json
+
+.env
+.env.local
+
+# What a Playwright run leaves behind: traces, screenshots, reports.
+test-results/
+playwright-report/
+
+# Claude Code's local state and scratch worktrees (whole second checkouts).
+.claude/
+
+# OS cruft.
+.DS_Store
+Thumbs.db

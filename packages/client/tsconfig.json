@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    // Node and browsers: fetch, Response and AbortSignal come from the DOM lib,
+    // which both runtimes implement, rather than from Node's ambient types.
+    "lib": ["ES2023", "DOM"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  // Tests, and the helpers that exist only for them, are typechecked by
+  // tsconfig.spec.json instead. See the root tsconfig.json for why.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"],
+  "references": [{ "path": "../schema" }]
+}

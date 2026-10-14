@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    // Inside dist so deleting dist forces a rebuild; `files` keeps it out of a
+    // packed tarball.
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    // Runs in browsers as well as Node, so no ambient Node types.
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  // Tests, and the helpers that exist only for them, are typechecked by
+  // tsconfig.spec.json instead. See the root tsconfig.json for why.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"]
+}

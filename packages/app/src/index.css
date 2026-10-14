@@ -1,0 +1,175 @@
+/* SPDX-License-Identifier: MIT
+ * Copyright (C) 2026 Magic Lantern contributors
+ *
+ * The app's stylesheet and its palette. Every colour, radius and type step the
+ * app uses is named here once as a semantic token; components spend those
+ * names and never a Tailwind scale (ESLint refuses `bg-slate-800` outside this
+ * file, and `dark:` variants everywhere).
+ *
+ * Two rules for editing it:
+ * - Plain `@theme`, never `@theme inline`: `inline` writes resolved values
+ *   into the utilities, so a second theme redefining a token would change
+ *   nothing.
+ * - Alias, never re-type: light values are `var(--color-slate-N)`, so a token
+ *   is provably the colour it names. theme.test.ts refuses literals.
+ *
+ * Logical properties only (Stylelint enforces it here; ESLint does the same for
+ * utility classes).
+ */
+
+@import 'tailwindcss';
+
+@theme {
+  /* Surfaces, by elevation rather than lightness, so the dark theme can invert
+     the ramp without any name becoming a lie. */
+  --color-canvas: var(--color-slate-50);
+  --color-surface: var(--color-white);
+  --color-surface-sunken: var(--color-slate-50);
+  --color-surface-muted: var(--color-slate-100);
+
+  /* Ink, four steps. The faintest sits closest to the 4.5:1 floor and is the
+     one to re-measure whenever the palette moves. */
+  --color-ink: var(--color-slate-900);
+  --color-ink-muted: var(--color-slate-700);
+  --color-ink-subtle: var(--color-slate-600);
+  --color-ink-faint: var(--color-slate-500);
+
+  /* `line` separates rows; `line-strong` edges something you can click or type into. */
+  --color-line: var(--color-slate-200);
+  --color-line-strong: var(--color-slate-300);
+
+  /* One action colour. `on-accent` exists because the accent flips from dark
+     to light in the dark theme, so a label spelled `text-white` would break.
+     `accent-muted` is the disabled fill, receding towards the page, and has a
+     label of its own: `on-accent` on a receding fill drops below 4.5:1.
+     theme.test.ts measures every pairing. */
+  --color-accent: var(--color-indigo-700);
+  --color-accent-hover: var(--color-indigo-600);
+  --color-accent-muted: var(--color-indigo-200);
+  --color-on-accent: var(--color-white);
+  --color-on-accent-muted: var(--color-indigo-800);
+  --color-focus: var(--color-indigo-500);
+
+  /* Refusal: something failed or cannot be used. */
+  --color-danger-ink: var(--color-red-900);
+  --color-danger-line: var(--color-red-300);
+  --color-danger-surface: var(--color-red-50);
+
+  /* Caution: something is wrong and you may still proceed (a read-only library). */
+  --color-warn-ink: var(--color-amber-800);
+  --color-warn-line: var(--color-amber-300);
+  --color-warn-surface: var(--color-amber-50);
+
+  /* A small neutral label, such as a library's status. */
+  --color-badge-surface: var(--color-slate-200);
+  --color-badge-ink: var(--color-slate-700);
+
+  /* One radius named twice, so controls and panels can diverge later without
+     revisiting every call site. */
+  --radius-control: var(--radius-md);
+  --radius-panel: var(--radius-md);
+
+  /* Only the steps this app invents; `text-sm` and `text-xs` stay Tailwind's. */
+  --text-title: var(--text-2xl);
+  --text-title--line-height: var(--text-2xl--line-height);
+  --text-title--font-weight: var(--font-weight-semibold);
+  --text-section: var(--text-lg);
+  --text-section--line-height: var(--text-lg--line-height);
+  --text-section--font-weight: var(--font-weight-semibold);
+
+  /* The platform's own interface face, named rather than left to `system-ui`
+     (which follows the display language on Windows). No webfont: nothing
+     should need to leave the house to draw a local app. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial,
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/* Which way to draw what CSS does not reach: carets, scrollbars, form chrome. */
+:root {
+  color-scheme: light;
+}
+
+/* Painted once for every route, so a page without a frame (sign-in, errors)
+   still gets the canvas rather than the browser's default. */
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+}
+
+/*
+ * The dark theme redefines tokens and nothing else. It is written twice
+ * because the system preference arrives through a media query and an explicit
+ * choice through an attribute, and CSS cannot hand one block to both;
+ * theme.test.ts fails if the copies drift. The `:not([data-theme='light'])`
+ * guard lets an explicit light choice beat a dark system preference.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --color-canvas: var(--color-slate-950);
+    --color-surface: var(--color-slate-900);
+    --color-surface-sunken: var(--color-slate-950);
+    --color-surface-muted: var(--color-slate-800);
+    --color-ink: var(--color-slate-50);
+    --color-ink-muted: var(--color-slate-300);
+    --color-ink-subtle: var(--color-slate-400);
+    --color-ink-faint: var(--color-slate-400);
+    --color-line: var(--color-slate-800);
+    --color-line-strong: var(--color-slate-700);
+    --color-accent: var(--color-indigo-300);
+    --color-accent-hover: var(--color-indigo-200);
+    --color-accent-muted: var(--color-indigo-800);
+    --color-on-accent: var(--color-slate-900);
+    --color-on-accent-muted: var(--color-indigo-200);
+    --color-focus: var(--color-indigo-400);
+    --color-danger-ink: var(--color-red-300);
+    --color-danger-line: var(--color-red-800);
+    --color-danger-surface: var(--color-red-950);
+    --color-warn-ink: var(--color-amber-300);
+    --color-warn-line: var(--color-amber-800);
+    --color-warn-surface: var(--color-amber-950);
+    --color-badge-surface: var(--color-slate-800);
+    --color-badge-ink: var(--color-slate-300);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* The elevation ramp inverts as a ramp: `surface` is still the raised one. */
+  --color-canvas: var(--color-slate-950);
+  --color-surface: var(--color-slate-900);
+  --color-surface-sunken: var(--color-slate-950);
+  --color-surface-muted: var(--color-slate-800);
+
+  /* slate-500 is below 4.5:1 on slate-900, so the two quietest inks converge. */
+  --color-ink: var(--color-slate-50);
+  --color-ink-muted: var(--color-slate-300);
+  --color-ink-subtle: var(--color-slate-400);
+  --color-ink-faint: var(--color-slate-400);
+
+  /* Hairlines brighten: "away from the surface" depends on the theme. */
+  --color-line: var(--color-slate-800);
+  --color-line-strong: var(--color-slate-700);
+
+  /* A light button on a dark page; every label on it follows `on-accent`. */
+  --color-accent: var(--color-indigo-300);
+  --color-accent-hover: var(--color-indigo-200);
+  --color-accent-muted: var(--color-indigo-800);
+  --color-on-accent: var(--color-slate-900);
+  --color-on-accent-muted: var(--color-indigo-200);
+  --color-focus: var(--color-indigo-400);
+
+  /* Refusal and caution keep their hues; ink and surface trade ends of the ramp. */
+  --color-danger-ink: var(--color-red-300);
+  --color-danger-line: var(--color-red-800);
+  --color-danger-surface: var(--color-red-950);
+  --color-warn-ink: var(--color-amber-300);
+  --color-warn-line: var(--color-amber-800);
+  --color-warn-surface: var(--color-amber-950);
+  --color-badge-surface: var(--color-slate-800);
+  --color-badge-ink: var(--color-slate-300);
+}

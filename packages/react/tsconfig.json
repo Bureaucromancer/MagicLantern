@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    // A library consumed by bundlers (Lantern's app, StoryEngine's client), so
+    // bundler resolution; relative imports still carry `.js` suffixes.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  // Tests, and the helpers that exist only for them, are typechecked by
+  // tsconfig.spec.json instead. See the root tsconfig.json for why.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"],
+  "references": [{ "path": "../schema" }]
+}

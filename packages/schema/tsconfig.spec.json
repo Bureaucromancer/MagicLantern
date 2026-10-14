@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "./tsconfig.spec.tsbuildinfo",
+    // Tests import describe/it/expect from vitest, whose types need Node's.
+    "types": ["node"]
+  },
+  // `files: []` so the project is legal before the package has its first test.
+  "files": [],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"],
+  // Undoes the inherited exclusion: this is the project that owns those files.
+  "exclude": [],
+  // The sources under test come from the build project's declarations, the same
+  // way any other consumer sees them.
+  "references": [{ "path": "./tsconfig.json" }]
+}

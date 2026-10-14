@@ -1,0 +1,34 @@
+{
+  "name": "@bureaucromancer/lantern-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "The Magic Lantern web UI, built with Vite and served by the daemon.",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencyNote": "StoryEngine's client stack at StoryEngine's pins: React 19, TanStack Router (code-based routes, so no router plugin or generator) and TanStack Query. The daemon is reached only through lantern-client (rule 1). Testing Library is declared here rather than at the root, because a second copy of React fails as 'Invalid hook call'.",
+  "dependencies": {
+    "@bureaucromancer/lantern-client": "workspace:*",
+    "@bureaucromancer/lantern-react": "workspace:*",
+    "@bureaucromancer/lantern-schema": "workspace:*",
+    "@tanstack/react-query": "5.101.4",
+    "@tanstack/react-router": "1.170.27",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.4",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.1"
+  }
+}

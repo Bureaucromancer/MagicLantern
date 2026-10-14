@@ -1,0 +1,44 @@
+{
+  "name": "@bureaucromancer/lantern-react",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "React components shared between Magic Lantern and StoryEngine's Character Studio.",
+  "privateNote": "Private until StoryEngine 3.0 starts (plan decision D4).",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/test-*.ts",
+    "!src/**/test-*.tsx"
+  ],
+  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests and their helpers stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
+  "dependencyNote": "The schema package only, never the client (D4): components take props and callbacks, so StoryEngine can feed them through its own server instead of putting Lantern credentials in the browser.",
+  "peerDependenciesNote": "A range rather than a pin, unlike every other version here, because a peer names what the host may supply: the component must render with the host's single copy of React (StoryEngine pins 19.2.8 today), and a second copy fails as 'Invalid hook call'. The exact pin lives in devDependencies for this package's own tests.",
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "dependencies": {
+    "@bureaucromancer/lantern-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  }
+}

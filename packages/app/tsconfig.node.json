@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // vite.config.ts runs in Node, so it gets Node's types; the app's browser
+  // source must not (packages/app/tsconfig.json). Typecheck only: Vite reads the
+  // file itself and nothing imports it.
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "./tsconfig.node.tsbuildinfo",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}

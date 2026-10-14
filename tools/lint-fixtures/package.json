@@ -1,0 +1,16 @@
+{
+  "name": "@bureaucromancer/lantern-lint-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Files that exist to violate the lint rules, so the rules are tested rather than trusted.",
+  "devDependenciesNote": "Every workspace package, so `@bureaucromancer/lantern-*` resolves from the fixture tree exactly as it does inside a real package.",
+  "devDependencies": {
+    "@bureaucromancer/lantern-app": "workspace:*",
+    "@bureaucromancer/lantern-client": "workspace:*",
+    "@bureaucromancer/lantern-react": "workspace:*",
+    "@bureaucromancer/lantern-schema": "workspace:*",
+    "@bureaucromancer/lantern-server": "workspace:*"
+  }
+}

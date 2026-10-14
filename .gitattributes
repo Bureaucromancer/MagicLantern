@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 Magic Lantern contributors
+
+# LF everywhere, in the repository and in the working tree.
+* text=auto eol=lf
+
+# Binary assets, never transformed. PNG metadata lives in text chunks, so a
+# line-ending pass over a .png corrupts it (rule 7: never re-encode pixels).
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.zip   binary

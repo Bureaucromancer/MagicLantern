@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    // Vite owns dist; this project only typechecks, emitting declarations so it
+    // can stay composite for `tsc -b`.
+    "outDir": "./dist-types",
+    "tsBuildInfoFile": "./dist-types/.tsbuildinfo",
+    "emitDeclarationOnly": true,
+
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    // Browser code: Vite's client types (import.meta.env, asset imports) and
+    // never Node's, so `process` or `Buffer` here fails to typecheck rather
+    // than throwing a ReferenceError in the page. vite.config.ts runs in Node
+    // and has its own project (tsconfig.node.json) for that reason: in this
+    // program, its vite import would declare Node's globals for every file.
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  // Tests, and the helpers that exist only for them, are typechecked by
+  // tsconfig.spec.json instead. See the root tsconfig.json for why.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"],
+  "references": [{ "path": "../schema" }, { "path": "../client" }, { "path": "../react" }]
+}

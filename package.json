@@ -1,0 +1,48 @@
+{
+  "name": "magic-lantern",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Magic Lantern — workspace root. See docs/ for the design doc and the implementation plan.",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=26.4.0"
+  },
+  "scripts": {
+    "build": "tsc -b && pnpm --filter @bureaucromancer/lantern-server emit-openapi && pnpm --filter @bureaucromancer/lantern-app build",
+    "dev": "pnpm run dev:deps && pnpm --parallel --filter @bureaucromancer/lantern-server --filter @bureaucromancer/lantern-app run dev",
+    "dev:deps": "tsc -b packages/schema packages/client packages/react",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "pnpm run lint:es && pnpm run lint:css",
+    "lint:css": "stylelint \"packages/**/*.css\"",
+    "lint:es": "eslint . --max-warnings 0",
+    "openapi:check": "pnpm --filter @bureaucromancer/lantern-server emit-openapi && git ls-files --error-unmatch -- packages/server/openapi.json && git diff --exit-code -- packages/server/openapi.json",
+    "test": "vitest run",
+    "test:e2e": "pnpm build && playwright test",
+    "typecheck": "tsc -b --force && tsc -p tsconfig.tools.json && tsc -p e2e"
+  },
+  "scriptsNote": "Workspace packages resolve each other through `dist`, so anything that imports one needs `tsc -b` first: `dev:deps` builds the packages the dev servers import (a fresh `pnpm dev` fails without it, and edits to schema, client or react need it re-run), and CI runs `typecheck` — which emits — before `lint`, because the boundary rule classifies an unresolved import as unknown and silently allows it. `typecheck` uses `--force` because `tsc -b` replays no diagnostics for projects it considers up to date. `openapi:check` requires the spec to be tracked before diffing, because a diff compares the tree with the index and a spec that was never committed is in neither; it checks with `git ls-files` rather than marking the file intent-to-add, which would leave an index entry behind that makes `git stash` fail.",
+  "devDependenciesNote": "Toolchain only; every pin matches StoryEngine's so the two repositories upgrade together, except vitest: 4.1.11, because StoryEngine's 4.1.10 has a published advisory (GHSA-82fw-gwwq-j7x9, path traversal in @vitest/mocker), and StoryEngine should move too. tools/advisory-floors.test.ts holds the lockfile at or above every such floor, so copying StoryEngine's pin back fails a test. `jsdom` is declared here because vitest imports it from its own bundle. `tsx` is here rather than in the server because both the server's watch script and the CLI tests (`node --import tsx`) resolve it from the workspace: Node's type stripping does not remap the `.js` import specifiers this codebase writes. React, Vite, Tailwind and Testing Library live in the packages that use them, never here, because a second copy of React fails as 'Invalid hook call'.",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.2.0",
+    "eslint": "10.8.1",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-boundaries": "7.2.0",
+    "eslint-plugin-headers": "1.3.4",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.11.0",
+    "jsdom": "30.0.1",
+    "prettier": "3.9.6",
+    "stylelint": "17.14.1",
+    "stylelint-config-standard": "40.0.0",
+    "stylelint-use-logical": "2.1.3",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.11"
+  }
+}

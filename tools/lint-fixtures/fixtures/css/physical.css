@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: MIT
+ * Copyright (C) 2026 Magic Lantern contributors
+ */
+
+.card {
+  margin-left: 1rem;
+  padding-right: 0.5rem;
+  border-left: 1px solid;
+  text-align: left;
+  float: right;
+}

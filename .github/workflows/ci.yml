@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 Magic Lantern contributors
+#
+# The per-change checks (plan, SK6). Ubuntu only: macOS and Windows minutes
+# bill at 10x and 2x on a private repository, and StoryEngine ran out of them.
+# Add a platform to the matrix if the repository goes public.
+#
+# Every step after install runs whatever the one before it did (`!cancelled()`
+# plus the outcome it actually needs), so the checks list says which checks
+# failed rather than "skipped" after the first red one.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request makes the older run irrelevant; a push to main
+# never cancels another, since every commit there may need its result later.
+# The event is in the group so a dispatch does not queue behind a push.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || format('{0}-{1}', github.event_name, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # A hang detector, not a budget.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # Reads the pnpm version from package.json's packageManager.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - id: install
+        run: pnpm install --frozen-lockfile
+
+      # Before lint, and not only because it is fast: `tsc -b` emits each
+      # package's dist, and the boundary rule classifies an import by the path it
+      # resolves to through those built entry points. Lint on an unbuilt
+      # workspace passes for the wrong reason.
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm typecheck
+
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm lint
+
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm format:check
+
+      - id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm build
+
+      - if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: pnpm test
+
+      # The committed spec must be what the routes generate. The script requires
+      # the file to be tracked before diffing, so a spec that was never
+      # committed fails too.
+      - name: The OpenAPI spec is current
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: pnpm openapi:check
+
+      # Rule 3, the second layer under the ESLint rule: the UI renders from
+      # descriptors and never names a backend. grep exits 1 for "no match"; any
+      # other failure (a missing directory) must not read as a pass.
+      - name: The UI names no backend
+        if: ${{ !cancelled() }}
+        run: |
+          set +e
+          grep -rnIiE 'sdcpp|sd\.cpp|comfy|sdapi' packages/app/src packages/react/src
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "::error::The UI source names a backend (rule 3); see the lines above."
+            exit 1
+          fi
+          test "$status" -eq 1
+
+      # Only Chromium: one smoke test, not a browser matrix. --with-deps because
+      # a runner lacks the libraries a headless browser loads.
+      - id: browser
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: pnpm exec playwright install --with-deps chromium
+
+      - if: ${{ !cancelled() && steps.browser.outcome == 'success' }}
+        run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

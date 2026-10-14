@@ -140,6 +140,7 @@ Lantern is a local app, and a library selector stands in for user accounts. A li
   - Stored request JSON is never rewritten; `schema_version` upgrades it when read.
 - **Lease.** A lease row in the install database (pid, boot id, heartbeat) stops two daemons on one data directory, such as the service and `pnpm dev`, from dispatching the same jobs.
 - **Paths and copies (A21).** Library paths are stored relative to the data directory. A copied folder whose id duplicates a registered library gets a new id when it's registered.
+  - An empty registry over library folders already on disk (a lost or replaced `lantern.db`) registers each folder whose `library.json` names it, instead of creating a new default library.
 - **Seams for remote libraries.** Hosted multi-user comes later. It could be an accounts layer on a server deployment, or a local Lantern working in a library that lives on another Lantern. Three things keep the second possible without a rewrite:
   - The `Library` interface. A remote library is a second implementation that speaks the native API's library routes. Local jobs write to a local outbox, which `importFinishedJob` sends on when each job finishes.
   - The native API's library routes are complete enough to be that interface over HTTP.
@@ -463,6 +464,12 @@ The OpenAI-compatible proxy (`/v1/images/generations`, `/v1/models`) arrives at 
 - **Web-page attacks (A29).**
   - Every request is checked against Host and Origin allowlists, which stops DNS rebinding and cross-site requests against a daemon with no password.
   - State-changing routes accept JSON only, apart from uploads, which still need the Origin check.
+- **Request hardening (SK7).** Choices the points above leave open, made in Phase 1:
+  - Sign-in runs at most two scrypt checks at once, so a burst of sign-ins cannot starve the threads that read files. It is a resource guard, not rate limiting or lockout, which Lantern still leaves out.
+  - Each wrong password logs a warning (`auth.sign-in-failed`) with the client's address, never the password.
+  - Every answer except the app's own files carries `Cache-Control: no-store`. App files keep `no-cache` (the shell) or `immutable` (hashed assets).
+  - A request must arrive in full within 60 s (`requestTimeout`), so a slow or withheld body cannot hold a connection open.
+  - URLs the router refuses and requests Node cannot parse get the error envelope too, and the former pass the Host and Origin checks first.
 - **Containers (A30).** The image starts only with `LANTERN_PASSWORD` or `LANTERN_TRUST_NETWORK=1`, and otherwise exits with a clear message. The compose example publishes on `127.0.0.1:<port>`.
 - **Lantern runs on the Lemonade host (D5).**
   - Lemonade binds each sd-server child to `127.0.0.1` on its own machine. Native routes therefore work only from the same box, or from the same network namespace if Lemonade is containerised.

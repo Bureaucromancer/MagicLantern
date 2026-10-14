@@ -1,0 +1,32 @@
+{
+  "name": "@bureaucromancer/lantern-schema",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Magic Lantern's API contract and canonical types, as TypeBox schemas.",
+  "privateNote": "Private until StoryEngine 3.0 starts (plan decision D4); StoryEngine uses link: dependencies or packed tarballs until then.",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/test-*.ts",
+    "!src/**/test-*.tsx"
+  ],
+  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests and their helpers stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
+  "dependencyNote": "TypeBox only (plan, repository layout), so a third-party adapter can depend on this package and nothing else. 0.34.x rather than the unscoped `typebox` 1.x because StoryEngine composes these schemas with its own 0.34 ones, and two TypeBox libraries do not typecheck across that boundary; the two repositories move together. Ajv stays in the server for the same reason.",
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52"
+  }
+}

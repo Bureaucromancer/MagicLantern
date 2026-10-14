@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The build project emits declarations only; this one emits nothing, and
+    // the two settings cannot both be on.
+    "emitDeclarationOnly": false,
+    "noEmit": true,
+    "tsBuildInfoFile": "./tsconfig.spec.tsbuildinfo",
+    // Tests run in Node under vitest (jsdom included), and vitest's types need
+    // Node's; the build project leaves Node's types out on purpose.
+    "types": ["node", "vite/client"]
+  },
+  // `files: []` so the project is legal before the package has its first test.
+  "files": [],
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/test-*.ts", "src/**/test-*.tsx"],
+  // Undoes the inherited exclusion: this is the project that owns those files.
+  "exclude": [],
+  // The sources under test come from the build project's declarations, the same
+  // way any other consumer sees them.
+  "references": [{ "path": "./tsconfig.json" }]
+}

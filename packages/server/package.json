@@ -1,0 +1,47 @@
+{
+  "name": "@bureaucromancer/lantern-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "The Magic Lantern daemon.",
+  "bin": {
+    "lantern": "./dist/main.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/test-*.ts",
+    "!src/**/test-*.tsx"
+  ],
+  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests and their helpers stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
+  "scripts": {
+    "start": "node dist/main.js",
+    "dev": "LANTERN_ALLOWED_ORIGINS=http://localhost:5173 tsx watch --clear-screen=false src/main.ts serve --config ../../data/lantern.json --data ../../data",
+    "emit-openapi": "node scripts/emit-openapi.ts"
+  },
+  "scriptsNote": "`dev` runs from packages/server, so `../../data` is the repository's gitignored data/ directory; `--config` points there too (a missing file means defaults), so a developer's real platform lantern.json never reaches the dev daemon. The Vite dev server proxies /api with changeOrigin (Host becomes the daemon's) but keeps the browser's Origin, which is why the dev origin is allowlisted here rather than rewritten in the proxy. `emit-openapi` runs the script with Node's built-in type stripping; the script imports the built app from dist, so the spec describes what ships.",
+  "dependencyNote": "Fastify 5 (5.12.5, deliberately not StoryEngine's 5.12.0, which has seven published advisories, four of them high; 5.12.5 fixes them all and was the newest release at least two weeks old; StoryEngine should bump too, and tools/advisory-floors.test.ts keeps the lockfile from going back) with @fastify/static (serves the built app), @fastify/cookie (the session cookie, signed by hand) and @fastify/swagger (the OpenAPI spec is generated from route schemas, rule 1). Ajv is declared directly because the server installs its own non-rewriting instance (rule 5) and the schema package must stay TypeBox-only. @fastify/type-provider-typebox is imported for types only: 5.2.0 is the last line that accepts @sinclair/typebox 0.34, and its validator compiler is never used. write-file-atomic does temp-write, fsync and rename, plus mode and cleanup handling that hand-rolled versions get wrong; it ships no types, so src/types/write-file-atomic.d.ts declares the surface we call.",
+  "dependencies": {
+    "@bureaucromancer/lantern-schema": "workspace:*",
+    "@fastify/cookie": "11.1.2",
+    "@fastify/static": "10.1.3",
+    "@fastify/swagger": "9.9.0",
+    "@fastify/type-provider-typebox": "5.2.0",
+    "@sinclair/typebox": "0.34.52",
+    "ajv": "8.20.0",
+    "fastify": "5.12.5",
+    "write-file-atomic": "8.0.0"
+  }
+}

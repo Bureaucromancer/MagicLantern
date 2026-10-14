@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // Typechecks the Playwright tier (`pnpm typecheck` runs `tsc -p e2e`). Not a
+  // build project: nothing shipped imports it, and it emits nothing.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": false,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // DOM for code evaluated in the page (`page.evaluate`), Node for the harness.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  // `files: []` keeps the project legal before the first spec exists.
+  "files": [],
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}

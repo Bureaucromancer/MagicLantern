@@ -1,0 +1,32 @@
+{
+  "name": "@bureaucromancer/lantern-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Typed HTTP client for the Magic Lantern daemon, for Node and browsers.",
+  "privateNote": "Private until StoryEngine 3.0 starts (plan decision D4).",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/test-*.ts",
+    "!src/**/test-*.tsx"
+  ],
+  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests and their helpers stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
+  "dependencyNote": "The schema package only: wire types are `Static<>` of its route schemas, so nothing here is hand-written to drift. Requests use the platform `fetch` (injectable), so there is no HTTP library to argue for.",
+  "dependencies": {
+    "@bureaucromancer/lantern-schema": "workspace:*"
+  }
+}

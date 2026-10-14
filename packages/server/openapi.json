@@ -1,0 +1,1106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Magic Lantern",
+    "version": "v1",
+    "description": "The HTTP API of the Magic Lantern daemon. Errors use one envelope: `{ error, message, issues? }`, where `error` is a stable kebab-case code.\n\nBeyond the answers each operation lists, any request can get 500 `internal` (the cause is only in the daemon's log), and an unknown API route, or a documented path under a method it does not list, gets 404 `not-found` (never 405).",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "lantern_session",
+        "description": "Set by `POST /api/v1/session`. In auth mode `password` every `/api/v1` route except `/api/v1/session` requires it; in mode `none` nothing does."
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/api/v1/info": {
+      "get": {
+        "operationId": "getInfo",
+        "summary": "Daemon and API version",
+        "tags": [
+          "info"
+        ],
+        "responses": {
+          "200": {
+            "description": "The daemon and API version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The daemon and API version.",
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "version",
+                    "apiVersion"
+                  ],
+                  "properties": {
+                    "name": {
+                      "description": "Always `lantern`.",
+                      "const": "lantern",
+                      "type": "string"
+                    },
+                    "version": {
+                      "description": "The daemon's version.",
+                      "type": "string"
+                    },
+                    "apiVersion": {
+                      "description": "The API version this daemon serves.",
+                      "const": "v1",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: password mode and no valid session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`unauthenticated`: password mode and no valid session.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/libraries": {
+      "get": {
+        "operationId": "listLibraries",
+        "summary": "List libraries",
+        "tags": [
+          "libraries"
+        ],
+        "responses": {
+          "200": {
+            "description": "The libraries this install knows.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The libraries this install knows.",
+                  "type": "object",
+                  "required": [
+                    "libraries"
+                  ],
+                  "properties": {
+                    "libraries": {
+                      "description": "Every registered library.",
+                      "type": "array",
+                      "items": {
+                        "description": "One library.",
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "status"
+                        ],
+                        "properties": {
+                          "id": {
+                            "pattern": "^lib_[0-9A-HJKMNP-TV-Z]{26}$",
+                            "description": "A library id: `lib_` and a ULID.",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "The display name.",
+                            "type": "string"
+                          },
+                          "status": {
+                            "description": "`ok`: usable. `read-only`: written by a newer daemon that this one can still read. `unavailable`: cannot be opened (see `reason`).",
+                            "anyOf": [
+                              {
+                                "const": "ok",
+                                "type": "string"
+                              },
+                              {
+                                "const": "read-only",
+                                "type": "string"
+                              },
+                              {
+                                "const": "unavailable",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "reason": {
+                            "description": "Why the library is read-only or unavailable, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthenticated`: password mode and no valid session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`unauthenticated`: password mode and no valid session.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Report the auth mode and whether this request is signed in",
+        "tags": [
+          "session"
+        ],
+        "responses": {
+          "200": {
+            "description": "The auth mode and whether this request is signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The auth mode and whether this request is signed in.",
+                  "type": "object",
+                  "required": [
+                    "mode",
+                    "authenticated"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "description": "`none`: no sign-in (the default, loopback only unless trusted). `password`: one install-wide password.",
+                      "anyOf": [
+                        {
+                          "const": "none",
+                          "type": "string"
+                        },
+                        {
+                          "const": "password",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "authenticated": {
+                      "description": "Whether this request may use the API: always true in mode `none`; in mode `password`, whether it carries a valid session.",
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "login",
+        "summary": "Sign in",
+        "tags": [
+          "session"
+        ],
+        "description": "Sets the `lantern_session` cookie. Every password that does not sign in answers the same 401, so there is nothing to probe.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "description": "Sign in with the install-wide password.",
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "maxLength": 512,
+                    "description": "The install-wide password.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "description": "Sign in with the install-wide password."
+        },
+        "responses": {
+          "204": {
+            "description": "Signed in; the session cookie is set."
+          },
+          "400": {
+            "description": "`bad-request`: the body is empty or is not valid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`bad-request`: the body is empty or is not valid JSON.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`invalid-credentials`: the password is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`invalid-credentials`: the password is wrong.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`auth-disabled`: auth mode is `none`, so there is nothing to sign in to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`auth-disabled`: auth mode is `none`, so there is nothing to sign in to.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload-too-large`: the body is over the daemon's size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`payload-too-large`: the body is over the daemon's size limit.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported-media-type`: the body is not JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`unsupported-media-type`: the body is not JSON.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`invalid`: the body does not match the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`invalid`: the body does not match the schema.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "logout",
+        "summary": "Sign out",
+        "tags": [
+          "session"
+        ],
+        "description": "Clears the session cookie. Succeeds whether or not a session was present.",
+        "responses": {
+          "204": {
+            "description": "Signed out; the session cookie is cleared."
+          },
+          "400": {
+            "description": "`bad-request`: a body was sent as JSON but is empty or is not valid JSON. Sign-out needs no body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`bad-request`: a body was sent as JSON but is empty or is not valid JSON. Sign-out needs no body.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "`payload-too-large`: the body is over the daemon's size limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`payload-too-large`: the body is over the daemon's size limit.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "`unsupported-media-type`: a body was sent and is not JSON. Sign-out needs no body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`unsupported-media-type`: a body was sent and is not JSON. Sign-out needs no body.",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Liveness check",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "The daemon is up.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "The daemon is up.",
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "description": "Always `ok` while the daemon answers.",
+                      "const": "ok",
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "`forbidden-host`: the Host header names a host the daemon does not answer to (see `allowedHosts`). `forbidden-origin`: the request comes from a web page whose origin is not allowed (see `allowedOrigins`).",
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+                      "description": "A stable kebab-case code, e.g. `unauthenticated`. Clients branch on this.",
+                      "type": "string"
+                    },
+                    "message": {
+                      "description": "Fallback prose for people; never parse it.",
+                      "type": "string"
+                    },
+                    "issues": {
+                      "description": "Present on `invalid` (422) answers.",
+                      "type": "array",
+                      "items": {
+                        "description": "One validation failure.",
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "properties": {
+                          "path": {
+                            "description": "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "What is wrong with it, in prose.",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "session": []
+    },
+    {}
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Liveness, outside `/api/v1` and public in every auth mode."
+    },
+    {
+      "name": "session",
+      "description": "The auth mode, sign-in and sign-out."
+    },
+    {
+      "name": "info",
+      "description": "What is answering."
+    },
+    {
+      "name": "libraries",
+      "description": "Self-contained collections, each with its own database and assets."
+    }
+  ]
+}

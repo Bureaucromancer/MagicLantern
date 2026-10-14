@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // Typechecks what no package project owns: repository tooling, build scripts
+  // (which import from `dist`, so putting them in the project that produces
+  // `dist` would be circular) and the root config files. Emits nothing.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": false,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["tools/**/*.ts", "packages/*/scripts/**/*.ts", "vitest.config.ts"],
+  "exclude": ["tools/lint-fixtures/fixtures/**"]
+}

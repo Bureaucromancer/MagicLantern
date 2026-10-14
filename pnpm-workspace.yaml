@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 Magic Lantern contributors
+
+packages:
+  - packages/*
+  # Not shipped. It exists so `@bureaucromancer/lantern-*` resolves from the
+  # fixture tree the same way it resolves inside a real package, which is what
+  # makes the boundary rules testable.
+  - tools/lint-fixtures
+
+# Enforces `engines.node`. pnpm 11 ignores `engine-strict` in .npmrc; only this
+# setting takes effect.
+engineStrict: true
+
+allowBuilds:
+  # Under tsx (the server's watch mode). Its install script only re-checks a
+  # binary pnpm has already linked from the per-platform package, so no
+  # third-party install script runs.
+  esbuild: false
+  # The native resolver behind eslint-import-resolver-typescript, which lets the
+  # boundary rules resolve `@bureaucromancer/*` through pnpm's symlinks.
+  unrs-resolver: true

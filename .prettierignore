@@ -1,0 +1,25 @@
+dist/
+dist-types/
+coverage/
+node_modules/
+pnpm-lock.yaml
+data/
+test-results/
+playwright-report/
+
+# Fixtures are written to violate rules, not to be pretty.
+tools/lint-fixtures/fixtures/
+
+# Generated. `emit-openapi` owns its bytes and CI checks it is current; a
+# formatter rewriting it would make that check fail for no reason.
+packages/server/openapi.json
+
+# Recorded backend exchanges (plan, repository layout): the bytes are the fixture.
+/fixtures/
+
+# Markdown is hand-wrapped prose, and Prettier's reflow fights it.
+**/*.md
+
+# Claude Code's local state and scratch worktrees, which are whole second
+# checkouts: formatting them makes the result depend on another branch.
+.claude/*
