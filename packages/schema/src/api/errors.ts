@@ -56,6 +56,12 @@ export const ValidationIssue = Type.Object(
         "The field at fault as a JSON pointer (RFC 6901, e.g. `/password`; `~` and `/` in a key are written `~0` and `~1`); for an unknown field, the pointer to that field; `''` for the whole body.",
     }),
     message: Type.String({ description: 'What is wrong with it, in prose.' }),
+    suggested: Type.Optional(
+      Type.Unknown({
+        description:
+          'A value that would be accepted, where there is an obvious one (the nearest in range, a listed value). The daemon never applies it: it never changes a value the client set (A3).',
+      }),
+    ),
   },
   { description: 'One validation failure.' },
 );

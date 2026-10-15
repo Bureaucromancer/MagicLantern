@@ -28,7 +28,7 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 
 import { resolveAppRoot, type AppRootResolution } from './config/app-root.js';
 import type { ResolvedConfig } from './config/schema.js';
-import { createValidator } from './http/ajv.js';
+import { createValidator } from './validation/ajv.js';
 import { registerAuthGate } from './http/auth.js';
 import {
   answerClientError,

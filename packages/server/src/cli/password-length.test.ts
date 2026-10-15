@@ -10,7 +10,7 @@
 import { LoginBody } from '@bureaucromancer/lantern-schema';
 import { describe, expect, it } from 'vitest';
 
-import { createValidator } from '../http/ajv.js';
+import { createValidator } from '../validation/ajv.js';
 import { MAX_PASSWORD_LENGTH, passwordTooLong } from './password-length.js';
 
 const signInAccepts = createValidator().compile(LoginBody);

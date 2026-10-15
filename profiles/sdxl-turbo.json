@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "family": "sdxl-turbo",
+  "name": "SDXL Turbo",
+  "licence": {
+    "id": "LicenseRef-Stability-AI-Non-Commercial-Research-Community",
+    "name": "Stability AI Non-Commercial Research Community License",
+    "commercial_use": false,
+    "source": "card"
+  },
+  "prompt": {
+    "dialect": "tags",
+    "encoders": ["OpenCLIP ViT-bigG/14", "CLIP ViT-L/14"],
+    "token_limit": 77,
+    "source": "unconfirmed",
+    "note": "SDXL Turbo is distilled from SDXL and shares its text encoders; the sources checked for this profile do not restate them."
+  },
+  "negative_prompt": {
+    "behaviour": "distilled",
+    "source": "card",
+    "note": "The card samples with guidance 0, so a negative prompt has no effect."
+  },
+  "resolution": {
+    "multiple_of": 8,
+    "native": { "width": 512, "height": 512 },
+    "source": "card",
+    "note": "The card describes 512x512 as the preferred size. The multiple of 8 is SDXL's and unconfirmed for Turbo."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 1,
+          "source": "card",
+          "note": "The card's example uses 1 step and recommends 1 to 4."
+        },
+        "sampling.cfg": {
+          "value": 1,
+          "source": "sdcpp",
+          "note": "The card's guidance 0 is CFG off; sd.cpp writes CFG off as cfg 1."
+        },
+        "geometry.width": { "value": 512, "source": "card" },
+        "geometry.height": { "value": 512, "source": "card" }
+      }
+    },
+    "img2img": {
+      "defaults": {
+        "sampling.steps": { "value": 2, "source": "card" },
+        "sampling.denoise": { "value": 0.5, "source": "card" },
+        "sampling.cfg": {
+          "value": 1,
+          "source": "sdcpp",
+          "note": "The card's guidance 0 is CFG off; sd.cpp writes CFG off as cfg 1."
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": { "sampling.cfg": { "maximum": 1 }, "prompt.negative": { "minLength": 1 } },
+      "message": "SDXL Turbo runs without CFG at its recommended settings, so the negative prompt has no effect.",
+      "source": "card"
+    },
+    {
+      "code": "steps_above_recommended",
+      "when": { "sampling.steps": { "exclusiveMinimum": 4 } },
+      "message": "SDXL Turbo is made for 1 to 4 steps; more rarely helps.",
+      "source": "card"
+    },
+    {
+      "code": "img2img_no_denoising_steps",
+      "modes": ["img2img"],
+      "when": { "sampling.steps": { "maximum": 1 }, "sampling.denoise": { "exclusiveMaximum": 1 } },
+      "message": "steps × denoise must be at least 1, or no step is sampled. Try 2 steps at denoise 0.5.",
+      "source": "card"
+    },
+    {
+      "code": "img2img_no_denoising_steps",
+      "modes": ["img2img"],
+      "when": {
+        "sampling.steps": { "minimum": 2, "maximum": 2 },
+        "sampling.denoise": { "exclusiveMaximum": 0.5 }
+      },
+      "message": "steps × denoise must be at least 1, or no step is sampled. Try 2 steps at denoise 0.5.",
+      "source": "card"
+    },
+    {
+      "code": "img2img_no_denoising_steps",
+      "modes": ["img2img"],
+      "when": {
+        "sampling.steps": { "minimum": 3, "maximum": 3 },
+        "sampling.denoise": { "exclusiveMaximum": 0.3333333333333333 }
+      },
+      "message": "steps × denoise must be at least 1, or no step is sampled. Try 2 steps at denoise 0.5.",
+      "source": "card"
+    },
+    {
+      "code": "img2img_no_denoising_steps",
+      "modes": ["img2img"],
+      "when": {
+        "sampling.steps": { "minimum": 4, "maximum": 4 },
+        "sampling.denoise": { "exclusiveMaximum": 0.25 }
+      },
+      "message": "steps × denoise must be at least 1, or no step is sampled. Try 2 steps at denoise 0.5.",
+      "source": "card"
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/stabilityai/sdxl-turbo",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md",
+      "title": "stable-diffusion.cpp: SD1.x, SD2.x and SDXL",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "CFG: the card's guidance 0 and sd.cpp's cfg 1 both mean CFG off; the profile uses sd.cpp's convention, since Lantern's cfg field is sd.cpp's.",
+    "No sampler default: neither source recommends one, so the route's own default applies.",
+    "Steps above 4 are a warning rather than a constraint: the card recommends 1 to 4 but more steps still run.",
+    "The steps × denoise rule needs two fields, which narrowing cannot state, so it is written as one warning per step count from 1 to 4."
+  ]
+}

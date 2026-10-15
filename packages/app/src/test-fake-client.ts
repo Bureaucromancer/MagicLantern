@@ -85,6 +85,18 @@ export function fakeClient(initial: Partial<FakeDaemonState> = {}): {
     listLibraries: vi.fn<LanternClient['listLibraries']>(() =>
       gate().then(() => ({ libraries: state.libraries.map((library) => ({ ...library })) })),
     ),
+    // The fake daemon knows no models: every library answers as a fresh daemon would.
+    resolve: vi.fn<LanternClient['resolve']>((lib) =>
+      gate().then(() =>
+        Promise.reject(
+          state.libraries.some((library) => library.id === lib)
+            ? new LanternApiError(422, 'invalid', 'The body is not valid.', [
+                { path: '/model', message: 'is not a known model' },
+              ])
+            : new LanternApiError(404, 'not-found', 'No such library.'),
+        ),
+      ),
+    ),
   };
   return { client, state };
 }

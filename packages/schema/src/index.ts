@@ -9,3 +9,7 @@
  */
 
 export * from './api/index.js';
+export * from './request/index.js';
+export * from './descriptor/index.js';
+export * from './profile/index.js';
+export * from './resolution/index.js';

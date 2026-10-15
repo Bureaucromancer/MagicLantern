@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { LanternApp } from '../http/types.js';
 import type { AppServices, AuthService } from '../services.js';
 import type { LibraryRecord, LibraryRegistry } from '../store/index.js';
+import { testModelServices } from '../test-app.js';
 import { registerLibrariesRoutes, toLibrarySummary } from './libraries.js';
 
 const OK: LibraryRecord = {
@@ -66,6 +67,7 @@ async function appWith(records: () => LibraryRecord[]): Promise<LanternApp> {
     processId: 'proc_test',
     auth: unusedAuth,
     libraries: registryOf(records),
+    ...testModelServices(),
   };
   app.decorate('services', services);
   await app.register(

@@ -62,7 +62,11 @@ export function refusalFrom(status: number, payload: unknown): LanternApiError {
   const rawIssues = body['issues'];
   const issues =
     Array.isArray(rawIssues) && rawIssues.every(isIssue)
-      ? rawIssues.map(({ path, message: text }) => ({ path, message: text }))
+      ? rawIssues.map(({ path, message: text, suggested }) => ({
+          path,
+          message: text,
+          ...(suggested === undefined ? {} : { suggested }),
+        }))
       : undefined;
   return new LanternApiError(status, code, message, issues);
 }

@@ -262,6 +262,8 @@ Every stored request carries a `schema_version`. Upgrade functions bring old rec
 
 ### Capability descriptor (A5, A6)
 
+Abridged: a real descriptor must also list every path the request requires (`prompt.positive`, `sampling.seed`, and a listed collection's `id` and `weight`), which the descriptor checker enforces.
+
 ```json
 {
   "route": "rt_01J…",

@@ -23,9 +23,10 @@
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
     "!src/**/test-*.ts",
-    "!src/**/test-*.tsx"
+    "!src/**/test-*.tsx",
+    "!src/**/__snapshots__"
   ],
-  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests and their helpers stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
+  "filesNote": "`src` ships beside `dist` because every source map and declaration map names its source as `../src/…`: without it, go-to-definition in a consumer and `node --enable-source-maps` stack traces lead to files that do not exist. Tests, their helpers and their snapshots stay out, as does the build info. tools/pack-shape.test.ts checks the packed list.",
   "scripts": {
     "start": "node dist/main.js",
     "dev": "LANTERN_ALLOWED_ORIGINS=http://localhost:5173 tsx watch --clear-screen=false src/main.ts serve --config ../../data/lantern.json --data ../../data",

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "family": "sdxl",
+  "name": "Stable Diffusion XL 1.0",
+  "licence": {
+    "id": "LicenseRef-OpenRAIL++-M",
+    "name": "CreativeML Open RAIL++-M",
+    "commercial_use": true,
+    "source": "unconfirmed",
+    "note": "The card names the licence. The commercial-use flag reflects the licence's general terms (commercial use with use-based restrictions) and was not re-checked for this profile."
+  },
+  "prompt": {
+    "dialect": "tags",
+    "encoders": ["OpenCLIP ViT-bigG/14", "CLIP ViT-L/14"],
+    "token_limit": 77,
+    "chunked": true,
+    "source": "card"
+  },
+  "negative_prompt": { "behaviour": "cfg", "source": "card" },
+  "resolution": {
+    "multiple_of": 8,
+    "native": { "width": 1024, "height": 1024 },
+    "source": "card",
+    "note": "Trained on several aspect ratios, but the bucket list is unconfirmed, so no presets are listed. Multiples of 64 are often called safest; also unconfirmed."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 40,
+          "source": "card",
+          "note": "The Diffusers example's 40 steps, which hands over to the refiner at 0.8; this profile is for the base model alone."
+        },
+        "geometry.width": { "value": 1024, "source": "sdcpp" },
+        "geometry.height": { "value": 1024, "source": "sdcpp" }
+      }
+    },
+    "img2img": {
+      "defaults": {
+        "sampling.steps": { "value": 40, "source": "card" }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": { "sampling.cfg": { "maximum": 1 }, "prompt.negative": { "minLength": 1 } },
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect."
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md",
+      "title": "stable-diffusion.cpp: SD1.x, SD2.x and SDXL",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "No CFG or sampler default: neither source recommends one, so the route's own default applies.",
+    "sd.cpp's SDXL example uses the sdxl_vae-fp16-fix VAE; that is a route setting, not a profile one."
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "family": "sd15",
+  "name": "Stable Diffusion 1.5",
+  "licence": {
+    "id": "CreativeML-OpenRAIL-M",
+    "name": "CreativeML Open RAIL-M",
+    "commercial_use": true,
+    "source": "unconfirmed",
+    "note": "The card names the licence. The commercial-use flag reflects the licence's general terms (commercial use with use-based restrictions) and was not re-checked for this profile."
+  },
+  "prompt": {
+    "dialect": "tags",
+    "encoders": ["CLIP ViT-L/14"],
+    "token_limit": 77,
+    "languages": ["en"],
+    "source": "card"
+  },
+  "negative_prompt": { "behaviour": "cfg", "source": "card" },
+  "resolution": {
+    "multiple_of": 8,
+    "native": { "width": 512, "height": 512 },
+    "source": "card",
+    "note": "No aspect buckets are published, so none are listed."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 20,
+          "source": "unconfirmed",
+          "note": "The card evaluates at 50 PNDM steps, a scheduler sd.cpp lacks; 20 to 30 is the common setting."
+        },
+        "sampling.cfg": {
+          "value": 7,
+          "source": "unconfirmed",
+          "note": "The card evaluates CFG from 1.5 to 8 and recommends none."
+        },
+        "sampling.sampler": {
+          "value": "euler_a",
+          "source": "unconfirmed",
+          "note": "The card recommends no sampler."
+        },
+        "geometry.width": { "value": 512, "source": "card" },
+        "geometry.height": { "value": 512, "source": "card" }
+      }
+    },
+    "img2img": {
+      "defaults": {
+        "sampling.steps": { "value": 20, "source": "unconfirmed" },
+        "sampling.cfg": { "value": 7, "source": "unconfirmed" },
+        "sampling.sampler": { "value": "euler_a", "source": "unconfirmed" }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": { "sampling.cfg": { "maximum": 1 }, "prompt.negative": { "minLength": 1 } },
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect."
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md",
+      "title": "stable-diffusion.cpp: SD1.x, SD2.x and SDXL",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "Inpainting needs the separate SD1.5 inpainting checkpoint, so this profile does not list inpaint; that checkpoint would be its own variant or family.",
+    "Defaults marked unconfirmed are the common community settings the research named; no primary source recommends them."
+  ]
+}

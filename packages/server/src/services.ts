@@ -11,6 +11,8 @@
 
 import type { AuthMode } from '@bureaucromancer/lantern-schema';
 
+import type { ModelCatalog } from './engine/catalog/index.js';
+import type { Resolver } from './engine/resolver/index.js';
 import type { LibraryRegistry } from './store/index.js';
 
 /** The verified contents of a session cookie. */
@@ -65,4 +67,8 @@ export interface AppServices {
   readonly processId: string;
   readonly auth: AuthService;
   readonly libraries: LibraryRegistry;
+  /** Models and their routes. An in-memory seam until Phase 5 gives them tables. */
+  readonly models: ModelCatalog;
+  /** Resolves requests against the models' routes, for the dry run and (Phase 4) submit. */
+  readonly resolver: Resolver;
 }

@@ -1,0 +1,300 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a malformed library id, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "must match pattern "^lib_[0-9A-HJKMNP-TV-Z]{26}$"",
+      "path": "/lib",
+    },
+  ],
+  "message": "The params is not valid: /lib must match pattern "^lib_[0-9A-HJKMNP-TV-Z]{26}$".",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a missing model, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "is required",
+      "path": "/model",
+    },
+  ],
+  "message": "The body is not valid: /model is required.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a mode rule, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "img2img needs a \`init\` input",
+      "path": "/request/inputs",
+    },
+  ],
+  "message": "The body is not valid: /request/inputs img2img needs a \`init\` input.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a mode the profile does not support, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "Stable Diffusion XL 1.0 does not support edit",
+      "path": "/request/mode",
+    },
+  ],
+  "message": "The body is not valid: /request/mode Stable Diffusion XL 1.0 does not support edit.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a model with no routes, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "model mdl_empty has no routes",
+      "path": "/model",
+    },
+  ],
+  "message": "The body is not valid: /model model mdl_empty has no routes.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for a value out of range, with a suggestion, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "must be <= 150",
+      "path": "/request/sampling/steps",
+      "suggested": 150,
+    },
+  ],
+  "message": "The body is not valid: /request/sampling/steps must be <= 150.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for an unknown body field, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "is not a known field",
+      "path": "/preset",
+    },
+  ],
+  "message": "The body is not valid: /preset is not a known field.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for an unknown model, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "is not a known model",
+      "path": "/model",
+    },
+  ],
+  "message": "The body is not valid: /model is not a known model.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for an unknown request field, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "is not a known field",
+      "path": "/request/colour",
+    },
+  ],
+  "message": "The body is not valid: /request/colour is not a known field.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for an unknown route, naming the field 1`] = `
+{
+  "error": "invalid",
+  "issues": [
+    {
+      "message": "is not a route of model mdl_dev_sdxl",
+      "path": "/route",
+    },
+  ],
+  "message": "The body is not valid: /route is not a route of model mdl_dev_sdxl.",
+}
+`;
+
+exports[`POST /api/v1/libraries/{lib}/resolve > answers the resolution, in the response schema 1`] = `
+{
+  "descriptor_digest": "445a672a7662f77c5c7034a529d2354368c7af9e51bce5caf92b86b6a8ccaee6",
+  "effective": {
+    "count": 1,
+    "extensions": {
+      "comfy": {
+        "nested": {
+          "deep": {
+            "on": true,
+          },
+          "list": [
+            1,
+            null,
+            "x",
+          ],
+        },
+      },
+      "mock": {
+        "delay_ms": 5,
+      },
+    },
+    "geometry": {
+      "height": 1024,
+      "width": 1024,
+    },
+    "mode": "txt2img",
+    "prompt": {
+      "negative": "blurry",
+      "positive": "a lighthouse at dusk",
+    },
+    "sampling": {
+      "cfg": 1,
+      "clip_skip": 2,
+      "sampler": "euler_a",
+      "scheduler": "discrete",
+      "seed": 1234,
+      "steps": 40,
+    },
+    "schema_version": 1,
+  },
+  "field_report": {
+    "/count": {
+      "field": "count",
+      "source": "descriptor",
+      "state": "native",
+      "used": 1,
+    },
+    "/extensions/comfy": {
+      "field": "extensions.comfy",
+      "reason": "Extensions for another backend kind (\`comfy\`); this route is \`mock\`.",
+      "requested": {
+        "nested": {
+          "deep": {
+            "on": true,
+          },
+          "list": [
+            1,
+            null,
+            "x",
+          ],
+        },
+      },
+      "source": "request",
+      "state": "ignored",
+    },
+    "/extensions/mock": {
+      "field": "extensions.mock",
+      "requested": {
+        "delay_ms": 5,
+      },
+      "source": "request",
+      "state": "native",
+      "used": {
+        "delay_ms": 5,
+      },
+    },
+    "/geometry/height": {
+      "field": "geometry.height",
+      "source": "profile",
+      "state": "native",
+      "used": 1024,
+    },
+    "/geometry/width": {
+      "field": "geometry.width",
+      "source": "profile",
+      "state": "native",
+      "used": 1024,
+    },
+    "/prompt/negative": {
+      "field": "prompt.negative",
+      "requested": "blurry",
+      "source": "request",
+      "state": "native",
+      "used": "blurry",
+    },
+    "/prompt/positive": {
+      "field": "prompt.positive",
+      "requested": "a lighthouse at dusk",
+      "source": "request",
+      "state": "native",
+      "used": "a lighthouse at dusk",
+    },
+    "/sampling/cfg": {
+      "field": "sampling.cfg",
+      "requested": 1,
+      "source": "request",
+      "state": "native",
+      "used": 1,
+    },
+    "/sampling/clip_skip": {
+      "field": "sampling.clip_skip",
+      "reason": "The mock backend draws no text encoder.",
+      "requested": 2,
+      "source": "request",
+      "state": "ignored",
+    },
+    "/sampling/sampler": {
+      "field": "sampling.sampler",
+      "source": "descriptor",
+      "state": "native",
+      "used": "euler_a",
+    },
+    "/sampling/scheduler": {
+      "field": "sampling.scheduler",
+      "source": "descriptor",
+      "state": "native",
+      "used": "discrete",
+    },
+    "/sampling/seed": {
+      "field": "sampling.seed",
+      "requested": "random",
+      "source": "drawn",
+      "state": "native",
+      "used": 1234,
+    },
+    "/sampling/steps": {
+      "field": "sampling.steps",
+      "source": "profile",
+      "state": "native",
+      "used": 40,
+    },
+  },
+  "provisional": true,
+  "route": {
+    "backend_kind": "mock",
+    "health": {
+      "load_state": "loaded",
+      "status": "ok",
+    },
+    "id": "rt_dev_mock",
+    "priority": 0,
+  },
+  "skipped_routes": [],
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect.",
+      "paths": [
+        "sampling.cfg",
+        "prompt.negative",
+      ],
+      "source": "profile",
+    },
+  ],
+}
+`;

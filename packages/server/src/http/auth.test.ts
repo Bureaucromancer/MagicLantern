@@ -18,6 +18,7 @@ import { registerSessionRoutes } from '../routes/session.js';
 import {
   captureLog,
   fakeLibraries,
+  testModelServices,
   makeTestApp,
   TEST_ORIGIN,
   type TestApp,
@@ -124,6 +125,7 @@ describe('the public routes', () => {
         cookieSecure: false,
       }),
       libraries: fakeLibraries(),
+      ...testModelServices(),
     });
     await app.register(fastifyCookie);
     await app.register(

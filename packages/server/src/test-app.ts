@@ -25,7 +25,12 @@ import type { AppRootResolution } from './config/app-root.js';
 import { DEFAULT_CONFIG, type LanternConfig, type ResolvedConfig } from './config/schema.js';
 import type { MachineNames } from './http/security.js';
 import type { LanternApp } from './http/types.js';
+import { type CatalogModel, InMemoryModelCatalog } from './engine/catalog/index.js';
+import { builtinProfiles } from './engine/profiles/index.js';
+import { createResolver, type SeedSource } from './engine/resolver/index.js';
 import { loggerOptions, type LogDestination } from './logging.js';
+import type { AppServices } from './services.js';
+import { createValidator } from './validation/ajv.js';
 import { readSecrets, writeSecrets } from './store/secrets.js';
 import type { LibraryRecord, LibraryRegistry } from './store/types.js';
 
@@ -80,6 +85,28 @@ export function libraryRecord(
   return { id, name, path: `libraries/${id}`, status, schemaVersion: 1 };
 }
 
+/**
+ * The model services over an in-memory catalog of the given models (none by
+ * default) and the built-in profiles.
+ *
+ * @param models the models the catalog holds
+ * @param drawSeed a deterministic seed source, for snapshot tests
+ */
+export function testModelServices(
+  models: readonly CatalogModel[] = [],
+  drawSeed?: SeedSource,
+): Pick<AppServices, 'models' | 'resolver'> {
+  const profiles = builtinProfiles();
+  return {
+    models: new InMemoryModelCatalog(models, profiles),
+    resolver: createResolver({
+      ajv: createValidator(),
+      profiles,
+      ...(drawSeed === undefined ? {} : { drawSeed }),
+    }),
+  };
+}
+
 /** Writes a password record the way `lantern set-password` does. */
 export async function setPassword(dataDir: string, password: string): Promise<void> {
   const existing = await readSecrets(dataDir);
@@ -97,6 +124,10 @@ export interface TestAppOptions {
   readonly appRoot?: AppRootResolution;
   readonly machine?: MachineNames;
   readonly libraries?: LibraryRegistry;
+  /** The models the catalog holds; none by default. */
+  readonly models?: readonly CatalogModel[];
+  /** Draws seeds; `crypto.randomInt` by default. */
+  readonly drawSeed?: SeedSource;
   /** Captures log lines (JSON) at this level and above. */
   readonly log?: { readonly level: LanternConfig['log']['level']; readonly into: LogDestination };
   /** Epoch milliseconds, for session expiry. */
@@ -144,6 +175,7 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
         ...(options.now === undefined ? {} : { now: options.now }),
       }),
       libraries: options.libraries ?? fakeLibraries(),
+      ...testModelServices(options.models, options.drawSeed),
     },
     {
       config,

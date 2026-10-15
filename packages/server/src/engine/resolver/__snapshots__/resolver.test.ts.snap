@@ -1,0 +1,873 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a whole resolution > resolves img2img, leaving the size to the init image 1`] = `
+{
+  "canonical": {
+    "inputs": [
+      {
+        "asset_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "crop": {
+          "height": 1,
+          "width": 0.5,
+          "x": 0,
+          "y": 0,
+        },
+        "role": "init",
+      },
+      {
+        "asset_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "role": "control",
+      },
+      {
+        "asset_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role": "control",
+        "weight": 1.5,
+      },
+    ],
+    "mode": "img2img",
+    "prompt": {
+      "positive": "a lighthouse at dusk",
+    },
+    "sampling": {
+      "seed": "random",
+    },
+    "schema_version": 1,
+  },
+  "descriptor_digest": "c84eb996b91778ae28dc6578a5ab7d96eea54b5832533cd07f75919a255e7b5c",
+  "effective": {
+    "inputs": [
+      {
+        "asset_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "crop": {
+          "height": 1,
+          "width": 0.5,
+          "x": 0,
+          "y": 0,
+        },
+        "role": "init",
+      },
+      {
+        "asset_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "role": "control",
+        "weight": 0.8,
+      },
+      {
+        "asset_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role": "control",
+        "weight": 1.5,
+      },
+    ],
+    "mode": "img2img",
+    "prompt": {
+      "positive": "a lighthouse at dusk",
+    },
+    "sampling": {
+      "cfg": 7,
+      "denoise": 0.75,
+      "seed": 1234,
+      "steps": 40,
+    },
+    "schema_version": 1,
+  },
+  "field_report": {
+    "/inputs/0/asset_id": {
+      "field": "inputs.init.asset_id",
+      "requested": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source": "request",
+      "state": "native",
+      "used": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    },
+    "/inputs/0/crop": {
+      "field": "inputs.init.crop",
+      "reason": "Lantern crops before sending",
+      "requested": {
+        "height": 1,
+        "width": 0.5,
+        "x": 0,
+        "y": 0,
+      },
+      "source": "request",
+      "state": "emulated",
+      "used": {
+        "height": 1,
+        "width": 0.5,
+        "x": 0,
+        "y": 0,
+      },
+    },
+    "/inputs/1/asset_id": {
+      "field": "inputs.control.asset_id",
+      "reason": "Applied by a second pass",
+      "requested": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source": "request",
+      "state": "emulated",
+      "used": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    },
+    "/inputs/1/weight": {
+      "field": "inputs.control.weight",
+      "reason": "Applied by a second pass",
+      "source": "descriptor",
+      "state": "emulated",
+      "used": 0.8,
+    },
+    "/inputs/2/asset_id": {
+      "field": "inputs.control.asset_id",
+      "reason": "Applied by a second pass",
+      "requested": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source": "request",
+      "state": "emulated",
+      "used": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    },
+    "/inputs/2/weight": {
+      "field": "inputs.control.weight",
+      "reason": "Applied by a second pass",
+      "requested": 1.5,
+      "source": "request",
+      "state": "emulated",
+      "used": 1.5,
+    },
+    "/prompt/positive": {
+      "field": "prompt.positive",
+      "requested": "a lighthouse at dusk",
+      "source": "request",
+      "state": "native",
+      "used": "a lighthouse at dusk",
+    },
+    "/sampling/cfg": {
+      "field": "sampling.cfg",
+      "source": "descriptor",
+      "state": "native",
+      "used": 7,
+    },
+    "/sampling/denoise": {
+      "field": "sampling.denoise",
+      "source": "descriptor",
+      "state": "native",
+      "used": 0.75,
+    },
+    "/sampling/seed": {
+      "field": "sampling.seed",
+      "requested": "random",
+      "source": "drawn",
+      "state": "native",
+      "used": 1234,
+    },
+    "/sampling/steps": {
+      "field": "sampling.steps",
+      "source": "profile",
+      "state": "native",
+      "used": 40,
+    },
+  },
+  "plan": [
+    {
+      "count": 1,
+      "route": "rt_a",
+      "seed": 1234,
+    },
+  ],
+  "provisional": true,
+  "route": {
+    "backend_kind": "sdcpp",
+    "health": {
+      "load_state": "loaded",
+      "status": "ok",
+    },
+    "id": "rt_a",
+    "priority": 0,
+  },
+  "skipped_routes": [],
+  "warnings": [],
+}
+`;
+
+exports[`a whole resolution > writes out every value, reports every leaf, and warns 1`] = `
+{
+  "canonical": {
+    "adapters": [
+      {
+        "id": "film-grain",
+        "kind": "lora",
+        "weight": 0.4,
+      },
+    ],
+    "count": 6,
+    "extensions": {
+      "comfy": {
+        "anything": [
+          1,
+          null,
+        ],
+      },
+      "sdcpp": {
+        "slg_scale": 2.5,
+      },
+    },
+    "mode": "txt2img",
+    "passes": [
+      {
+        "kind": "hires",
+        "target": {
+          "height": 2048,
+          "width": 2048,
+        },
+      },
+      {
+        "kind": "hires",
+        "scale": 1.5,
+        "steps": 12,
+      },
+    ],
+    "prompt": {
+      "negative": "blurry",
+      "positive": "a lighthouse at dusk",
+    },
+    "sampling": {
+      "cfg": 1,
+      "distilled_guidance": 3.5,
+      "seed": "random",
+    },
+    "schema_version": 1,
+  },
+  "descriptor_digest": "c84eb996b91778ae28dc6578a5ab7d96eea54b5832533cd07f75919a255e7b5c",
+  "effective": {
+    "adapters": [
+      {
+        "id": "film-grain",
+        "kind": "lora",
+        "weight": 0.4,
+      },
+    ],
+    "count": 6,
+    "extensions": {
+      "comfy": {
+        "anything": [
+          1,
+          null,
+        ],
+      },
+      "sdcpp": {
+        "slg_scale": 2.5,
+      },
+    },
+    "geometry": {
+      "height": 1024,
+      "width": 1024,
+    },
+    "mode": "txt2img",
+    "passes": [
+      {
+        "denoise": 0.5,
+        "kind": "hires",
+        "steps": 10,
+        "target": {
+          "height": 2048,
+          "width": 2048,
+        },
+      },
+      {
+        "denoise": 0.5,
+        "kind": "hires",
+        "scale": 1.5,
+        "steps": 12,
+      },
+    ],
+    "prompt": {
+      "negative": "blurry",
+      "positive": "a lighthouse at dusk",
+    },
+    "sampling": {
+      "cfg": 1,
+      "distilled_guidance": 3.5,
+      "sampler": "euler",
+      "scheduler": "discrete",
+      "seed": 1234,
+      "steps": 40,
+    },
+    "schema_version": 1,
+  },
+  "field_report": {
+    "/adapters/0/id": {
+      "field": "adapters.lora.id",
+      "requested": "film-grain",
+      "source": "request",
+      "state": "native",
+      "used": "film-grain",
+    },
+    "/adapters/0/weight": {
+      "field": "adapters.lora.weight",
+      "requested": 0.4,
+      "source": "request",
+      "state": "native",
+      "used": 0.4,
+    },
+    "/count": {
+      "field": "count",
+      "reason": "The backend makes at most 4 per job; Lantern runs more jobs for the rest.",
+      "requested": 6,
+      "source": "request",
+      "state": "emulated",
+      "used": 6,
+    },
+    "/extensions/comfy": {
+      "field": "extensions.comfy",
+      "reason": "Extensions for another backend kind (\`comfy\`); this route is \`sdcpp\`.",
+      "requested": {
+        "anything": [
+          1,
+          null,
+        ],
+      },
+      "source": "request",
+      "state": "ignored",
+    },
+    "/extensions/sdcpp": {
+      "field": "extensions.sdcpp",
+      "requested": {
+        "slg_scale": 2.5,
+      },
+      "source": "request",
+      "state": "native",
+      "used": {
+        "slg_scale": 2.5,
+      },
+    },
+    "/geometry/height": {
+      "field": "geometry.height",
+      "source": "profile",
+      "state": "native",
+      "used": 1024,
+    },
+    "/geometry/width": {
+      "field": "geometry.width",
+      "source": "profile",
+      "state": "native",
+      "used": 1024,
+    },
+    "/passes/0/denoise": {
+      "field": "passes.hires.denoise",
+      "source": "descriptor",
+      "state": "native",
+      "used": 0.5,
+    },
+    "/passes/0/steps": {
+      "field": "passes.hires.steps",
+      "source": "descriptor",
+      "state": "native",
+      "used": 10,
+    },
+    "/passes/0/target/height": {
+      "field": "passes.hires.target.height",
+      "requested": 2048,
+      "source": "request",
+      "state": "native",
+      "used": 2048,
+    },
+    "/passes/0/target/width": {
+      "field": "passes.hires.target.width",
+      "requested": 2048,
+      "source": "request",
+      "state": "native",
+      "used": 2048,
+    },
+    "/passes/1/denoise": {
+      "field": "passes.hires.denoise",
+      "source": "descriptor",
+      "state": "native",
+      "used": 0.5,
+    },
+    "/passes/1/scale": {
+      "field": "passes.hires.scale",
+      "requested": 1.5,
+      "source": "request",
+      "state": "native",
+      "used": 1.5,
+    },
+    "/passes/1/steps": {
+      "field": "passes.hires.steps",
+      "requested": 12,
+      "source": "request",
+      "state": "native",
+      "used": 12,
+    },
+    "/prompt/negative": {
+      "field": "prompt.negative",
+      "requested": "blurry",
+      "source": "request",
+      "state": "native",
+      "used": "blurry",
+    },
+    "/prompt/positive": {
+      "field": "prompt.positive",
+      "requested": "a lighthouse at dusk",
+      "source": "request",
+      "state": "native",
+      "used": "a lighthouse at dusk",
+    },
+    "/sampling/cfg": {
+      "field": "sampling.cfg",
+      "requested": 1,
+      "source": "request",
+      "state": "native",
+      "used": 1,
+    },
+    "/sampling/distilled_guidance": {
+      "field": "sampling.distilled_guidance",
+      "reason": "Not used by this model family",
+      "requested": 3.5,
+      "source": "request",
+      "state": "ignored",
+    },
+    "/sampling/sampler": {
+      "field": "sampling.sampler",
+      "source": "descriptor",
+      "state": "native",
+      "used": "euler",
+    },
+    "/sampling/scheduler": {
+      "field": "sampling.scheduler",
+      "source": "descriptor",
+      "state": "native",
+      "used": "discrete",
+    },
+    "/sampling/seed": {
+      "field": "sampling.seed",
+      "requested": "random",
+      "source": "drawn",
+      "state": "native",
+      "used": 1234,
+    },
+    "/sampling/steps": {
+      "field": "sampling.steps",
+      "source": "profile",
+      "state": "native",
+      "used": 40,
+    },
+  },
+  "plan": [
+    {
+      "count": 6,
+      "route": "rt_a",
+      "seed": 1234,
+    },
+  ],
+  "provisional": true,
+  "route": {
+    "backend_kind": "sdcpp",
+    "health": {
+      "load_state": "loaded",
+      "status": "ok",
+    },
+    "id": "rt_a",
+    "priority": 0,
+  },
+  "skipped_routes": [],
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect.",
+      "paths": [
+        "sampling.cfg",
+        "prompt.negative",
+      ],
+      "source": "profile",
+    },
+  ],
+}
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > passes over a lower layer’s value the route can’t take, with a warning 1`] = `
+[
+  {
+    "code": "default_refused",
+    "message": "The preset default for \`sampling.steps\` (999) is not a value this route takes, so it was passed over.",
+    "paths": [
+      "sampling.steps",
+    ],
+    "source": "resolver",
+  },
+  {
+    "code": "default_refused",
+    "message": "The preset default for \`sampling.sampler\` ("lms") is not a value this route takes, so it was passed over.",
+    "paths": [
+      "sampling.sampler",
+    ],
+    "source": "resolver",
+  },
+]
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > takes the value from a preset 1`] = `
+{
+  "field": "sampling.steps",
+  "source": "preset",
+  "state": "native",
+  "used": 25,
+}
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > takes the value from the descriptor default (flux2-klein gives no steps) 1`] = `
+{
+  "field": "sampling.steps",
+  "source": "descriptor",
+  "state": "native",
+  "used": 20,
+}
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > takes the value from the model overrides 1`] = `
+{
+  "field": "sampling.steps",
+  "source": "model",
+  "state": "native",
+  "used": 22,
+}
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > takes the value from the profile (sdxl: 40) 1`] = `
+{
+  "field": "sampling.steps",
+  "source": "profile",
+  "state": "native",
+  "used": 40,
+}
+`;
+
+exports[`precedence (A3): request > preset > model overrides > profile > descriptor default > takes the value from the request 1`] = `
+{
+  "field": "sampling.steps",
+  "requested": 30,
+  "source": "request",
+  "state": "native",
+  "used": 30,
+}
+`;
+
+exports[`profile warnings, evaluated on effective > flux1-schnell, negative at its default cfg 1`] = `
+[
+  {
+    "code": "negative_prompt_ignored",
+    "message": "FLUX.1 [schnell] runs without CFG at its recommended settings, so the negative prompt has no effect.",
+    "paths": [
+      "sampling.cfg",
+      "prompt.negative",
+    ],
+    "source": "profile",
+  },
+]
+`;
+
+exports[`profile warnings, evaluated on effective > flux1-schnell, steps above 4 1`] = `
+[
+  {
+    "code": "steps_above_recommended",
+    "message": "FLUX.1 [schnell] is made for 1 to 4 steps; more rarely helps.",
+    "paths": [
+      "sampling.steps",
+    ],
+    "source": "profile",
+  },
+]
+`;
+
+exports[`profile warnings, evaluated on effective > sdxl, cfg 1 and no negative: none 1`] = `[]`;
+
+exports[`profile warnings, evaluated on effective > sdxl, negative at cfg 1 1`] = `
+[
+  {
+    "code": "negative_prompt_ignored",
+    "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect.",
+    "paths": [
+      "sampling.cfg",
+      "prompt.negative",
+    ],
+    "source": "profile",
+  },
+]
+`;
+
+exports[`profile warnings, evaluated on effective > sdxl, negative at cfg 7: none 1`] = `[]`;
+
+exports[`profile warnings, evaluated on effective > sdxl-turbo img2img at its defaults: none 1`] = `[]`;
+
+exports[`profile warnings, evaluated on effective > sdxl-turbo img2img, steps × denoise under one 1`] = `
+[
+  {
+    "code": "img2img_no_denoising_steps",
+    "message": "steps × denoise must be at least 1, or no step is sampled. Try 2 steps at denoise 0.5.",
+    "paths": [
+      "sampling.steps",
+      "sampling.denoise",
+    ],
+    "source": "profile",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a LoRA the route does not offer 1`] = `
+[
+  {
+    "message": "must be equal to one of the allowed values",
+    "path": "/adapters/0/id",
+    "suggested": "detail-tweaker",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a LoRA weight out of range 1`] = `
+[
+  {
+    "message": "must be <= 2",
+    "path": "/adapters/0/weight",
+    "suggested": 2,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a control weight on an item 1`] = `
+[
+  {
+    "message": "must be <= 2",
+    "path": "/inputs/1/weight",
+    "suggested": 2,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a count over the emulated maximum 1`] = `
+[
+  {
+    "message": "must be <= 8",
+    "path": "/count",
+    "suggested": 8,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a field the route does not list 1`] = `
+[
+  {
+    "message": "is not supported by this route in txt2img",
+    "path": "/sampling/image_cfg",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a missing init image 1`] = `
+[
+  {
+    "message": "img2img needs a \`init\` input",
+    "path": "/inputs",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a sampler the route does not offer 1`] = `
+[
+  {
+    "message": "must be equal to one of the allowed values",
+    "path": "/sampling/sampler",
+    "suggested": "euler",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a seed beyond 2^53 − 1 1`] = `
+[
+  {
+    "message": "must be <= 9007199254740991",
+    "path": "/sampling/seed",
+    "suggested": 9007199254740991,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > a width off the route’s multiple 1`] = `
+[
+  {
+    "message": "must be multiple of 64",
+    "path": "/geometry/width",
+    "suggested": 1024,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > an init image with a weight 1`] = `
+[
+  {
+    "message": "\`init\` inputs take no weight; img2img strength is \`sampling.denoise\`",
+    "path": "/inputs/0/weight",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > an unknown field 1`] = `
+[
+  {
+    "message": "is not a known field",
+    "path": "/colour",
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > steps over the route’s maximum 1`] = `
+[
+  {
+    "message": "must be <= 150",
+    "path": "/sampling/steps",
+    "suggested": 150,
+  },
+]
+`;
+
+exports[`refusals (422) never change a value, and suggest one (A3) > steps under the schema’s minimum 1`] = `
+[
+  {
+    "message": "must be >= 1",
+    "path": "/sampling/steps",
+    "suggested": 1,
+  },
+]
+`;
+
+exports[`route choice > chooses a cold route, which is healthy (L2) 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_cold",
+  "skipped": [],
+}
+`;
+
+exports[`route choice > chooses a degraded route over a lower one 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_slow",
+  "skipped": [],
+}
+`;
+
+exports[`route choice > chooses a down route when no healthy one takes the request, blocked (A12) 1`] = `
+{
+  "blocked": {
+    "code": "routes_down",
+    "detail": "Route rt_down is down.",
+  },
+  "route": "rt_down",
+  "skipped": [
+    {
+      "issues": [
+        {
+          "message": "must be <= 10",
+          "path": "/sampling/steps",
+          "suggested": 10,
+        },
+      ],
+      "reason": "invalid",
+      "route": "rt_narrow",
+    },
+  ],
+}
+`;
+
+exports[`route choice > chooses past a down route 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_up",
+  "skipped": [
+    {
+      "reason": "down",
+      "route": "rt_down",
+    },
+  ],
+}
+`;
+
+exports[`route choice > chooses past a route the request does not validate on 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_wide",
+  "skipped": [
+    {
+      "issues": [
+        {
+          "message": "must be <= 10",
+          "path": "/sampling/steps",
+          "suggested": 10,
+        },
+      ],
+      "reason": "invalid",
+      "route": "rt_narrow",
+    },
+  ],
+}
+`;
+
+exports[`route choice > chooses past a route without the mode 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_both",
+  "skipped": [
+    {
+      "reason": "mode_unsupported",
+      "route": "rt_txt",
+    },
+  ],
+}
+`;
+
+exports[`route choice > chooses the highest priority 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_high",
+  "skipped": [],
+}
+`;
+
+exports[`route choice > chooses ties by id 1`] = `
+{
+  "blocked": undefined,
+  "route": "rt_a",
+  "skipped": [],
+}
+`;
+
+exports[`route choice > refuses when no route takes the request, with the first route’s issues and every skip 1`] = `
+{
+  "issues": [
+    {
+      "message": "must be <= 10",
+      "path": "/sampling/steps",
+      "suggested": 10,
+    },
+  ],
+  "kind": "invalid",
+  "skipped_routes": [
+    {
+      "reason": "mode_unsupported",
+      "route": "rt_img",
+    },
+    {
+      "issues": [
+        {
+          "message": "must be <= 10",
+          "path": "/sampling/steps",
+          "suggested": 10,
+        },
+      ],
+      "reason": "invalid",
+      "route": "rt_narrow",
+    },
+    {
+      "issues": [
+        {
+          "message": "must be <= 10",
+          "path": "/sampling/steps",
+          "suggested": 10,
+        },
+      ],
+      "reason": "invalid",
+      "route": "rt_down",
+    },
+  ],
+}
+`;

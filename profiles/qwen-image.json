@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "family": "qwen-image",
+  "name": "Qwen-Image",
+  "licence": {
+    "id": "Apache-2.0",
+    "name": "Apache License 2.0",
+    "commercial_use": true,
+    "source": "card"
+  },
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["Qwen2.5-VL-7B"],
+    "source": "card",
+    "note": "The card appends a quality suffix (\"positive magic\") to prompts; Lantern does not add it."
+  },
+  "negative_prompt": {
+    "behaviour": "cfg",
+    "source": "card",
+    "note": "The card runs true CFG with a negative prompt of \" \"."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "native": {
+      "width": 1328,
+      "height": 1328
+    },
+    "presets": [
+      {
+        "aspect": "1:1",
+        "width": 1328,
+        "height": 1328
+      },
+      {
+        "aspect": "16:9",
+        "width": 1664,
+        "height": 928
+      },
+      {
+        "aspect": "9:16",
+        "width": 928,
+        "height": 1664
+      },
+      {
+        "aspect": "3:2",
+        "width": 1584,
+        "height": 1056
+      },
+      {
+        "aspect": "2:3",
+        "width": 1056,
+        "height": 1584
+      },
+      {
+        "aspect": "4:3",
+        "width": 1472,
+        "height": 1104
+      },
+      {
+        "aspect": "3:4",
+        "width": 1104,
+        "height": 1472
+      }
+    ],
+    "source": "card",
+    "note": "4:3 is sometimes given as 1472x1140, but 1140 is not a multiple of 16; the presets use 1104 (and 1104x1472 for 3:4), as the research recommends."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 50,
+          "source": "card"
+        },
+        "sampling.cfg": {
+          "value": 4,
+          "source": "card",
+          "note": "The card's true_cfg_scale 4.0; sd.cpp's example uses 2.5."
+        },
+        "sampling.sampler": {
+          "value": "euler",
+          "source": "sdcpp"
+        },
+        "sampling.flow_shift": {
+          "value": 3,
+          "source": "sdcpp"
+        },
+        "geometry.width": {
+          "value": 1328,
+          "source": "card"
+        },
+        "geometry.height": {
+          "value": 1328,
+          "source": "card"
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": {
+        "sampling.cfg": {
+          "maximum": 1
+        },
+        "prompt.negative": {
+          "minLength": 1
+        }
+      },
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect."
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/Qwen/Qwen-Image",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "card-2512",
+      "url": "https://huggingface.co/Qwen/Qwen-Image-2512",
+      "title": "Model card: Qwen-Image-2512",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/qwen_image.md",
+      "title": "stable-diffusion.cpp: Qwen-Image",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "CFG: the card's true_cfg_scale 4.0 against sd.cpp's example 2.5. The profile takes the card's 4.0, because the guidance scale is a property of the model rather than a backend convention; 2.5 is a valid lower setting.",
+    "Sampler and flow shift follow sd.cpp (euler, flow_shift 3), which the card does not state in sd.cpp's terms.",
+    "Covers Qwen-Image-2512 too, which shares these settings.",
+    "Qwen-Image-Edit is a separate family."
+  ]
+}

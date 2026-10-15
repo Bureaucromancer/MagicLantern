@@ -8,5 +8,6 @@ export * from './health.js';
 export * from './info.js';
 export * from './libraries.js';
 export * from './openapi.js';
+export * from './resolve.js';
 export * from './route.js';
 export * from './session.js';

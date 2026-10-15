@@ -19,6 +19,8 @@
     "lint:css": "stylelint \"packages/**/*.css\"",
     "lint:es": "eslint . --max-warnings 0",
     "openapi:check": "pnpm --filter @bureaucromancer/lantern-server emit-openapi && git ls-files --error-unmatch -- packages/server/openapi.json && git diff --exit-code -- packages/server/openapi.json",
+    "profiles:generate": "node packages/server/scripts/generate-profiles.ts",
+    "profiles:check": "node packages/server/scripts/generate-profiles.ts --check",
     "test": "vitest run",
     "test:e2e": "pnpm build && playwright test",
     "typecheck": "tsc -b --force && tsc -p tsconfig.tools.json && tsc -p e2e"

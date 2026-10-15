@@ -38,6 +38,10 @@ export const OPENAPI_TAGS = [
     name: 'libraries',
     description: 'Self-contained collections, each with its own database and assets.',
   },
+  {
+    name: 'generation',
+    description: 'Resolving generation requests against models and their routes.',
+  },
 ] as const;
 
 const SWAGGER_OPTIONS: FastifyDynamicSwaggerOptions = {
@@ -163,6 +167,12 @@ export function openApiStubServices(): AppServices {
     },
     get libraries(): AppServices['libraries'] {
       return unavailable('services.libraries');
+    },
+    get models(): AppServices['models'] {
+      return unavailable('services.models');
+    },
+    get resolver(): AppServices['resolver'] {
+      return unavailable('services.resolver');
     },
   };
 }

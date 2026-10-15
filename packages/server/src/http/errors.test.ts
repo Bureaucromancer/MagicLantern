@@ -14,7 +14,7 @@ import {
   type TestApp,
   type TestAppOptions,
 } from '../test-app.js';
-import { answerClientError, pathOfIssue, rawErrorResponse, unhandledShape } from './errors.js';
+import { answerClientError, rawErrorResponse, unhandledShape } from './errors.js';
 
 let server: TestApp | null = null;
 
@@ -169,27 +169,6 @@ describe('unexpected errors', () => {
     const record = log.records.find((line) => line['event'] === 'request.failed');
     expect(record).toMatchObject({ type: 'Error', code: 'EACCES', msg: 'Unhandled error' });
     expect(JSON.stringify(record)).not.toContain('a long private prompt');
-  });
-});
-
-describe('pathOfIssue', () => {
-  it('joins the key Ajv keeps in params', () => {
-    expect(pathOfIssue({ instancePath: '', params: { additionalProperty: 'x' } })).toBe('/x');
-    expect(pathOfIssue({ instancePath: '/a', params: { missingProperty: 'b' } })).toBe('/a/b');
-    expect(pathOfIssue({ instancePath: '/a/0', params: {} })).toBe('/a/0');
-  });
-
-  it("is '' for the whole body, as RFC 6901 has it", () => {
-    expect(pathOfIssue({ instancePath: '', params: {} })).toBe('');
-  });
-
-  it('escapes the joined key as Ajv escapes its instancePath (~ before /)', () => {
-    expect(pathOfIssue({ instancePath: '', params: { additionalProperty: 'a/b' } })).toBe('/a~1b');
-    expect(pathOfIssue({ instancePath: '', params: { additionalProperty: 'x~y' } })).toBe('/x~0y');
-    expect(pathOfIssue({ instancePath: '', params: { additionalProperty: '~1' } })).toBe('/~01');
-    expect(pathOfIssue({ instancePath: '/a~1b', params: { missingProperty: 'z/w' } })).toBe(
-      '/a~1b/z~1w',
-    );
   });
 });
 

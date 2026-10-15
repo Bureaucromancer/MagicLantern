@@ -2,8 +2,10 @@
 // Copyright (C) 2026 Magic Lantern contributors
 
 /**
- * The one Ajv instance, installed with `app.setValidatorCompiler` (rule 5:
- * validation never rewrites a request). Fastify's stock Ajv uses
+ * The daemon's Ajv settings, shared by the HTTP layer (installed with
+ * `app.setValidatorCompiler`) and the engine (profiles, descriptors, the
+ * resolver), so neither depends on the other (rule 5: validation never
+ * rewrites a request). Fastify's stock Ajv uses
  * `removeAdditional: true`, `useDefaults: true` and `coerceTypes: 'array'`,
  * which would silently strip unknown fields instead of refusing them, fill
  * defaults the resolver owns, and coerce types. Ours turns all three off,

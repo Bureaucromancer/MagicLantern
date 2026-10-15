@@ -7,7 +7,7 @@
  *
  * The TypeBox type provider is used for types only: route handlers get typed
  * bodies and replies from the schema package's route contracts, while
- * validation stays with the one non-rewriting Ajv (http/ajv.ts, rule 5). Its
+ * validation stays with the one non-rewriting Ajv (validation/ajv.ts, rule 5). Its
  * `TypeBoxValidatorCompiler` is never used.
  */
 

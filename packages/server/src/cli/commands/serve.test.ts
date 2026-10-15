@@ -200,6 +200,19 @@ describe('lantern serve', () => {
     expect(running.lines.at(-1)).toMatchObject({ event: 'stopped', msg: 'Stopped' });
   });
 
+  it('serves the development model catalog only with LANTERN_DEV=1, and says so', async () => {
+    const dev = start({ LANTERN_DEV: '1' }, recordingStore([]));
+    expect(await dev.line('dev-mode')).toMatchObject({ level: 40, models: ['mdl_dev_sdxl'] });
+    dev.signals.emit('SIGTERM');
+    expect(await dev.done).toBe(0);
+
+    const plain = start({}, recordingStore([]));
+    await plain.line('listening');
+    plain.signals.emit('SIGTERM');
+    expect(await plain.done).toBe(0);
+    expect(plain.lines.some((record) => record['event'] === 'dev-mode')).toBe(false);
+  });
+
   it('stops once however many signals arrive', async () => {
     const events: string[] = [];
     const running = start({}, recordingStore(events));

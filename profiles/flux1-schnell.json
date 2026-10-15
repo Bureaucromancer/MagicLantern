@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "family": "flux1-schnell",
+  "name": "FLUX.1 [schnell]",
+  "licence": {
+    "id": "Apache-2.0",
+    "name": "Apache License 2.0",
+    "commercial_use": true,
+    "source": "card"
+  },
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["CLIP-L", "T5-XXL"],
+    "token_limit": 256,
+    "source": "card",
+    "note": "The token limit is T5's max_sequence_length for schnell; CLIP-L still reads 77 tokens."
+  },
+  "negative_prompt": {
+    "behaviour": "distilled",
+    "source": "card",
+    "note": "The card samples with guidance 0 and sd.cpp at cfg 1: CFG off, so a negative prompt has no effect."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "source": "unconfirmed",
+    "note": "The sources give no native size, so none is listed. The multiple of 16 is the research's, shared with FLUX.1 [dev]."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": { "value": 4, "source": "card" },
+        "sampling.cfg": {
+          "value": 1,
+          "source": "sdcpp",
+          "note": "The card's guidance 0 is CFG off; sd.cpp writes CFG off as cfg 1."
+        },
+        "sampling.sampler": { "value": "euler", "source": "sdcpp" },
+        "geometry.width": {
+          "value": 1024,
+          "source": "unconfirmed",
+          "note": "FLUX.1 [dev]'s example size."
+        },
+        "geometry.height": {
+          "value": 1024,
+          "source": "unconfirmed",
+          "note": "FLUX.1 [dev]'s example size."
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": { "sampling.cfg": { "maximum": 1 }, "prompt.negative": { "minLength": 1 } },
+      "message": "FLUX.1 [schnell] runs without CFG at its recommended settings, so the negative prompt has no effect.",
+      "source": "card"
+    },
+    {
+      "code": "steps_above_recommended",
+      "when": { "sampling.steps": { "exclusiveMinimum": 4 } },
+      "message": "FLUX.1 [schnell] is made for 1 to 4 steps; more rarely helps.",
+      "source": "card"
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.1-schnell",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux.md",
+      "title": "stable-diffusion.cpp: FLUX",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "CFG: the card's guidance 0 and sd.cpp's cfg 1 both mean CFG off; the profile uses sd.cpp's convention. The card's guidance 0 is its only guidance value, so distilled guidance is not set.",
+    "Steps: the card and sd.cpp agree on 4.",
+    "Steps above 4 are a warning rather than a constraint: the card recommends 1 to 4 but more steps still run."
+  ]
+}

@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
 import { DEFAULT_CONFIG } from '../config/schema.js';
 import type { AppServices } from '../services.js';
+import { testModelServices } from '../test-app.js';
 import {
   generateOpenApiJson,
   OPENAPI_API_VERSION,
@@ -288,6 +289,8 @@ describe('the stubs the emitter builds the app with', () => {
     expect(() => services.processId).toThrow(/services\.processId/);
     expect(() => services.auth).toThrow(/services\.auth/);
     expect(() => services.libraries).toThrow(/services\.libraries/);
+    expect(() => services.models).toThrow(/services\.models/);
+    expect(() => services.resolver).toThrow(/services\.resolver/);
   });
 
   it('have no data directory, and otherwise the default config', () => {
@@ -370,6 +373,7 @@ describe('GET /api/v1/openapi.json on the real app', () => {
         cookie: { name: 'lantern_session', secure: false, maxAgeSeconds: 60 },
       },
       libraries: { list: () => [], get: () => undefined, close: () => undefined },
+      ...testModelServices(),
     };
   }
 

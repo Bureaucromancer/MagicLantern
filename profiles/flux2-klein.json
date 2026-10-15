@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "family": "flux2-klein",
+  "name": "FLUX.2 [klein]",
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["Qwen3"],
+    "token_limit": 512,
+    "source": "card-4b",
+    "note": "Each variant names its Qwen3 size: 4B for the 4B models, 8B for the 9B ones."
+  },
+  "negative_prompt": {
+    "behaviour": "unconfirmed",
+    "source": "unconfirmed",
+    "note": "Differs by variant; see each variant."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "native": {
+      "width": 1024,
+      "height": 1024
+    },
+    "source": "card-4b",
+    "note": "1024x1024 is the distilled models' size; the research gives no other for Base."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "geometry.width": {
+          "value": 1024,
+          "source": "card-4b"
+        },
+        "geometry.height": {
+          "value": 1024,
+          "source": "card-4b"
+        }
+      }
+    },
+    "edit": {
+      "collections": {
+        "inputs.ref": {
+          "min": 1,
+          "max": 4,
+          "source": "card-4b",
+          "note": "Single- and multi-reference editing; references are downscaled to about 1024x1024 in area."
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": {
+        "sampling.cfg": {
+          "maximum": 1
+        },
+        "prompt.negative": {
+          "minLength": 1
+        }
+      },
+      "message": "At CFG 1 there is no unconditional pass, so the negative prompt has no effect. The distilled variants run at CFG 1."
+    }
+  ],
+  "variants": [
+    {
+      "id": "distilled-4b",
+      "name": "FLUX.2 [klein] 4B",
+      "licence": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial_use": true,
+        "source": "card-4b"
+      },
+      "prompt": {
+        "dialect": "natural",
+        "encoders": ["Qwen3-4B"],
+        "token_limit": 512,
+        "source": "card-4b",
+        "note": "Detailed natural-language prompts. The token limit is the text encoder's max_sequence_length."
+      },
+      "negative_prompt": {
+        "behaviour": "distilled",
+        "source": "card-4b",
+        "note": "Step-distilled and run at cfg 1, where a negative prompt has no effect."
+      },
+      "modes": {
+        "txt2img": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 4,
+              "source": "card-4b"
+            },
+            "sampling.cfg": {
+              "value": 1,
+              "source": "sdcpp"
+            },
+            "sampling.sampler": {
+              "value": "euler",
+              "source": "sdcpp"
+            }
+          }
+        },
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 4,
+              "source": "card-4b"
+            },
+            "sampling.cfg": {
+              "value": 1,
+              "source": "sdcpp"
+            },
+            "sampling.sampler": {
+              "value": "euler",
+              "source": "sdcpp"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "distilled-9b",
+      "name": "FLUX.2 [klein] 9B",
+      "licence": {
+        "id": "LicenseRef-FLUX-Non-Commercial",
+        "name": "FLUX Non-Commercial License",
+        "commercial_use": false,
+        "source": "card-9b"
+      },
+      "prompt": {
+        "dialect": "natural",
+        "encoders": ["Qwen3-8B"],
+        "token_limit": 512,
+        "source": "card-9b",
+        "note": "Detailed natural-language prompts. The token limit is the text encoder's max_sequence_length."
+      },
+      "negative_prompt": {
+        "behaviour": "distilled",
+        "source": "card-9b",
+        "note": "Step-distilled and run at cfg 1, where a negative prompt has no effect."
+      },
+      "modes": {
+        "txt2img": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 4,
+              "source": "card-9b"
+            },
+            "sampling.cfg": {
+              "value": 1,
+              "source": "sdcpp"
+            },
+            "sampling.sampler": {
+              "value": "euler",
+              "source": "sdcpp"
+            }
+          }
+        },
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 4,
+              "source": "card-9b"
+            },
+            "sampling.cfg": {
+              "value": 1,
+              "source": "sdcpp"
+            },
+            "sampling.sampler": {
+              "value": "euler",
+              "source": "sdcpp"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "base-4b",
+      "name": "FLUX.2 [klein] Base 4B",
+      "licence": {
+        "id": "Apache-2.0",
+        "name": "Apache License 2.0",
+        "commercial_use": true,
+        "source": "card-base-4b"
+      },
+      "prompt": {
+        "dialect": "natural",
+        "encoders": ["Qwen3-4B"],
+        "token_limit": 512,
+        "source": "card-base-4b",
+        "note": "Detailed natural-language prompts. The token limit is the text encoder's max_sequence_length."
+      },
+      "negative_prompt": {
+        "behaviour": "unconfirmed",
+        "source": "unconfirmed",
+        "note": "Base runs real CFG, but whether a user negative prompt is honoured is unconfirmed."
+      },
+      "modes": {
+        "txt2img": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 50,
+              "source": "card-base-4b",
+              "note": "BFL's card and the Diffusers default; sd.cpp's example uses 20."
+            },
+            "sampling.cfg": {
+              "value": 4,
+              "source": "sdcpp",
+              "note": "sd.cpp's example and the Diffusers default agree."
+            }
+          }
+        },
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 50,
+              "source": "card-base-4b",
+              "note": "BFL's card and the Diffusers default; sd.cpp's example uses 20."
+            },
+            "sampling.cfg": {
+              "value": 4,
+              "source": "sdcpp",
+              "note": "sd.cpp's example and the Diffusers default agree."
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "base-9b",
+      "name": "FLUX.2 [klein] Base 9B",
+      "licence": {
+        "id": "LicenseRef-FLUX-Non-Commercial",
+        "name": "FLUX Non-Commercial License",
+        "commercial_use": false,
+        "source": "card-base-9b"
+      },
+      "prompt": {
+        "dialect": "natural",
+        "encoders": ["Qwen3-8B"],
+        "token_limit": 512,
+        "source": "card-base-9b",
+        "note": "Detailed natural-language prompts. The token limit is the text encoder's max_sequence_length."
+      },
+      "negative_prompt": {
+        "behaviour": "unconfirmed",
+        "source": "unconfirmed",
+        "note": "Base runs real CFG, but whether a user negative prompt is honoured is unconfirmed."
+      },
+      "modes": {
+        "txt2img": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 50,
+              "source": "card-base-9b",
+              "note": "BFL's card and the Diffusers default; sd.cpp's example uses 20."
+            },
+            "sampling.cfg": {
+              "value": 4,
+              "source": "sdcpp",
+              "note": "sd.cpp's example and the Diffusers default agree."
+            }
+          }
+        },
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 50,
+              "source": "card-base-9b",
+              "note": "BFL's card and the Diffusers default; sd.cpp's example uses 20."
+            },
+            "sampling.cfg": {
+              "value": 4,
+              "source": "sdcpp",
+              "note": "sd.cpp's example and the Diffusers default agree."
+            }
+          }
+        }
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "card-4b",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+      "title": "Model card: FLUX.2 [klein] 4B",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "card-9b",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-9B",
+      "title": "Model card: FLUX.2 [klein] 9B",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "card-base-4b",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B",
+      "title": "Model card: FLUX.2 [klein] Base 4B",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "card-base-9b",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-9B",
+      "title": "Model card: FLUX.2 [klein] Base 9B",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux2.md",
+      "title": "stable-diffusion.cpp: FLUX.2",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "Four variants with different steps, CFG and licence: name one. The family-level profile, used when no variant is named, carries only what they share.",
+    "Base steps: BFL's card and the Diffusers default give 50, sd.cpp's example 20. The profile takes 50, because the step count is a property of the model rather than a backend convention; sd.cpp's 20 is a faster example.",
+    "Base sampler: no source names one, so the route's own default applies. The distilled variants use sd.cpp's euler.",
+    "Licence: the 4B models are Apache-2.0, the 9B models FLUX Non-Commercial.",
+    "A 9B KV variant also exists; the research gives no settings for it, so it has no profile variant yet.",
+    "sd.cpp passes edit references with -r."
+  ]
+}

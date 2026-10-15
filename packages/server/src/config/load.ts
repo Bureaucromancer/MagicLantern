@@ -28,7 +28,7 @@ import { dirname, resolve } from 'node:path';
 
 import type { ErrorObject, ValidateFunction } from 'ajv';
 
-import { createValidator } from '../http/ajv.js';
+import { createValidator } from '../validation/ajv.js';
 import { defaultConfigPath, defaultDataDir } from '../store/paths.js';
 import {
   ConfigError,

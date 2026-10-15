@@ -1,0 +1,62 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`requestLeaves > lists every value with its pointer and field path, discriminators and the mode excepted 1`] = `
+[
+  {
+    "field": "prompt.positive",
+    "pointer": "/prompt/positive",
+    "value": "a lighthouse at dusk",
+  },
+  {
+    "field": "sampling.seed",
+    "pointer": "/sampling/seed",
+    "value": "random",
+  },
+  {
+    "collection": "inputs.init",
+    "field": "inputs.init.asset_id",
+    "pointer": "/inputs/0/asset_id",
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  },
+  {
+    "collection": "inputs.init",
+    "field": "inputs.init.crop",
+    "pointer": "/inputs/0/crop",
+    "value": {
+      "height": 1,
+      "width": 1,
+      "x": 0,
+      "y": 0,
+    },
+  },
+  {
+    "collection": "inputs.control",
+    "field": "inputs.control.asset_id",
+    "pointer": "/inputs/1/asset_id",
+    "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  },
+  {
+    "collection": "inputs.control",
+    "field": "inputs.control.weight",
+    "pointer": "/inputs/1/weight",
+    "value": 0.5,
+  },
+  {
+    "collection": "passes.hires",
+    "field": "passes.hires.target.width",
+    "pointer": "/passes/0/target/width",
+    "value": 2048,
+  },
+  {
+    "collection": "passes.hires",
+    "field": "passes.hires.target.height",
+    "pointer": "/passes/0/target/height",
+    "value": 2048,
+  },
+  {
+    "field": "extensions.a/b",
+    "pointer": "/extensions/a~1b",
+    "value": {},
+  },
+]
+`;

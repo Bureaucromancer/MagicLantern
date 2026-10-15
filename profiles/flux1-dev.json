@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "family": "flux1-dev",
+  "name": "FLUX.1 [dev]",
+  "licence": {
+    "id": "LicenseRef-FLUX.1-dev-Non-Commercial",
+    "name": "FLUX.1 [dev] Non-Commercial License",
+    "commercial_use": false,
+    "outputs_commercial_use": true,
+    "source": "card",
+    "note": "The weights are non-commercial; the licence lets outputs be used commercially."
+  },
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["CLIP-L", "T5-XXL"],
+    "token_limit": 512,
+    "source": "card",
+    "note": "The token limit is T5's max_sequence_length; CLIP-L still reads 77 tokens."
+  },
+  "negative_prompt": {
+    "behaviour": "distilled",
+    "source": "sdcpp",
+    "note": "Guidance-distilled: sd.cpp runs it at cfg 1, where a negative prompt has no effect."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "native": { "width": 1024, "height": 1024 },
+    "source": "card",
+    "note": "1024x1024 is the card's example size."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 50,
+          "source": "card",
+          "note": "The card's example; sd.cpp's docs give no step count."
+        },
+        "sampling.cfg": { "value": 1, "source": "sdcpp" },
+        "sampling.distilled_guidance": { "value": 3.5, "source": "card" },
+        "sampling.sampler": { "value": "euler", "source": "sdcpp" },
+        "geometry.width": { "value": 1024, "source": "card" },
+        "geometry.height": { "value": 1024, "source": "card" }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": { "sampling.cfg": { "maximum": 1 }, "prompt.negative": { "minLength": 1 } },
+      "message": "FLUX.1 [dev] runs without CFG at its recommended settings, so the negative prompt has no effect. Guidance is set with distilled guidance instead.",
+      "source": "sdcpp"
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux.md",
+      "title": "stable-diffusion.cpp: FLUX",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "CFG and sampler follow sd.cpp (cfg 1, euler); guidance is the card's distilled guidance 3.5, which is a separate field.",
+    "img2img and inpaint are not listed: neither source confirms them for this checkpoint."
+  ]
+}

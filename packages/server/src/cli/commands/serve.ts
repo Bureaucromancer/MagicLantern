@@ -42,6 +42,9 @@ import {
   type AppRootResolution,
 } from '../../config/app-root.js';
 import type { ResolvedConfig } from '../../config/schema.js';
+import { DEV_MODEL_ID, isDevMode, startupModelCatalog } from '../../engine/catalog/index.js';
+import { builtinProfiles } from '../../engine/profiles/index.js';
+import { createResolver } from '../../engine/resolver/index.js';
 import { unhandledShape } from '../../http/errors.js';
 import { isWildcardHost, normalizeHostname } from '../../http/security.js';
 import type { LanternApp } from '../../http/types.js';
@@ -62,6 +65,7 @@ import type {
 import { UsageError, type Command, type CommandContext } from '../args.js';
 import { checkAuthBeforeStart, prepareAuth, type PreparedAuth } from '../auth-setup.js';
 import { holdDataDir, loadCommandConfig } from '../startup.js';
+import { createValidator } from '../../validation/ajv.js';
 import { readServerVersion } from '../version.js';
 
 /** The store calls serve makes, injectable so the command is testable on its own. */
@@ -333,6 +337,8 @@ export function createServeCommand(options: ServeOptions = {}): Command {
         },
       });
 
+      // Profiles load (and are validated) here, so a bad built-in fails the start.
+      const profiles = builtinProfiles();
       const builtApp = await buildApp(
         {
           version: readServerVersion(),
@@ -343,6 +349,9 @@ export function createServeCommand(options: ServeOptions = {}): Command {
             cookieSecure: config.auth.cookieSecure,
           }),
           libraries,
+          // Phase 5 replaces the in-memory catalog with the install database.
+          models: startupModelCatalog(context.env, profiles),
+          resolver: createResolver({ ajv: createValidator(), profiles }),
         },
         {
           config,
@@ -355,6 +364,12 @@ export function createServeCommand(options: ServeOptions = {}): Command {
       storeLog.attach(storeLogFrom(builtApp.log));
       closers.push({ name: 'app', close: () => closeApp(builtApp, backstopMs) });
       logStartup(builtApp.log, config, auth, appRoot);
+      if (isDevMode(context.env)) {
+        builtApp.log.warn(
+          { event: 'dev-mode', models: [DEV_MODEL_ID] },
+          'LANTERN_DEV=1: serving the development model catalog (one mock route)',
+        );
+      }
 
       try {
         await builtApp.listen({ host: config.host, port: config.port });

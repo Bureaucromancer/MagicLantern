@@ -34,11 +34,15 @@ export interface RouteSchema {
 
 export interface RouteContract<S extends RouteSchema = RouteSchema> {
   readonly method: RouteMethod;
-  /** The full path the daemon serves and the client requests. */
+  /**
+   * The full path the daemon serves and the client requests, with path
+   * parameters in OpenAPI's form (`{lib}`; fill them with `fillPath`).
+   */
   readonly path: string;
   /**
    * The path inside its Fastify mount: relative to {@link API_V1_PREFIX} for
    * API routes (registered in the prefixed plugin), equal to `path` otherwise.
+   * Path parameters are in Fastify's form (`:lib`).
    */
   readonly url: string;
   readonly schema: S;

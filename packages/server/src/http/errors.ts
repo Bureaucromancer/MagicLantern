@@ -29,6 +29,7 @@ import {
 } from '@bureaucromancer/lantern-schema';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 
+import { type AjvIssue, issuesOfAjv } from '../validation/issues.js';
 import type { LanternApp } from './types.js';
 
 /** Sends the envelope. The one way any module in this package answers an error. */
@@ -62,37 +63,6 @@ export function unhandledShape(error: unknown): Record<string, unknown> {
   }
   if (error.stack !== undefined) shape['stack'] = error.stack;
   return shape;
-}
-
-interface AjvIssue {
-  readonly keyword: string;
-  readonly instancePath: string;
-  readonly params: Record<string, unknown>;
-  readonly message?: string;
-}
-
-/** One key as a JSON-pointer segment (RFC 6901): `~` first, or the `~1` for a slash would be escaped again. */
-function pointerSegment(key: string): string {
-  return key.replaceAll('~', '~0').replaceAll('/', '~1');
-}
-
-/**
- * The JSON pointer (RFC 6901) to the field at fault; `''` is the whole body.
- * Ajv reports an additionalProperties (or required) failure at the parent
- * object and puts the raw key in `params`, so joining them, escaped like the
- * rest of Ajv's already-escaped `instancePath`, turns "this object is wrong"
- * into "this field is wrong".
- */
-export function pathOfIssue(issue: Pick<AjvIssue, 'instancePath' | 'params'>): string {
-  const field = issue.params['additionalProperty'] ?? issue.params['missingProperty'];
-  if (typeof field === 'string') return `${issue.instancePath}/${pointerSegment(field)}`;
-  return issue.instancePath;
-}
-
-function messageOfIssue(issue: AjvIssue): string {
-  if (issue.keyword === 'additionalProperties') return 'is not a known field';
-  if (issue.keyword === 'required') return 'is required';
-  return issue.message ?? 'is invalid';
 }
 
 /** Fastify's shape for a thrown or framework error; `unknown` until checked. */
@@ -143,26 +113,30 @@ function issueLabel(path: string, part: string): string {
   return path === '' ? `the whole ${part}` : path;
 }
 
+/**
+ * The 422 `invalid` answer: the issues, and a message that lists them.
+ *
+ * @param reply the reply
+ * @param issues the issues, each a JSON pointer into `part`
+ * @param part what was validated (`body`, `params`), for the message
+ */
+export function sendInvalid(
+  reply: FastifyReply,
+  issues: readonly ValidationIssue[],
+  part = 'request',
+): FastifyReply {
+  const summary = issues
+    .map((issue) => `${issueLabel(issue.path, part)} ${issue.message}`)
+    .join('; ');
+  return sendError(reply, 422, ErrorCodes.invalid, `The ${part} is not valid: ${summary}.`, issues);
+}
+
 export function registerErrorHandling(app: LanternApp): void {
   app.setErrorHandler((rawError, request, reply) => {
     const error = asHttpError(rawError);
 
     if (error?.validation !== undefined) {
-      const issues = error.validation.map((issue) => ({
-        path: pathOfIssue(issue),
-        message: messageOfIssue(issue),
-      }));
-      const part = error.validationContext ?? 'request';
-      const summary = issues
-        .map((issue) => `${issueLabel(issue.path, part)} ${issue.message}`)
-        .join('; ');
-      return sendError(
-        reply,
-        422,
-        ErrorCodes.invalid,
-        `The ${part} is not valid: ${summary}.`,
-        issues,
-      );
+      return sendInvalid(reply, issuesOfAjv(error.validation), error.validationContext);
     }
 
     const status = error?.statusCode ?? 500;

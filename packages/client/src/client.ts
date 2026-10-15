@@ -10,16 +10,20 @@
  */
 
 import {
+  fillPath,
   GetHealthRoute,
   GetInfoRoute,
   GetSessionRoute,
   ListLibrariesRoute,
   LoginRoute,
   LogoutRoute,
+  ResolveRoute,
   type HealthResponse,
   type InfoResponse,
   type LibraryListResponse,
   type LoginBody,
+  type ResolveBody,
+  type ResolveResponse,
   type RouteMethod,
   type SessionResponse,
 } from '@bureaucromancer/lantern-schema';
@@ -65,6 +69,12 @@ export interface LanternClient {
   info(options?: RequestOptions): Promise<InfoResponse>;
   /** `GET /api/v1/libraries`. */
   listLibraries(options?: RequestOptions): Promise<LibraryListResponse>;
+  /**
+   * `POST /api/v1/libraries/{lib}/resolve`: the dry run. Rejects with
+   * `invalid` (422), whose issues point into the body (`/request/sampling/steps`)
+   * and may carry a `suggested` value, or `not-found` (404) for an unknown library.
+   */
+  resolve(lib: string, body: ResolveBody, options?: RequestOptions): Promise<ResolveResponse>;
 }
 
 /** True where relative URLs resolve against a page (a browser), false in Node. */
@@ -180,8 +190,9 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
     method: RouteMethod,
     path: string,
     requestOptions: RequestOptions | undefined,
+    body?: unknown,
   ): Promise<unknown> {
-    const { status, payload } = await send(method, path, undefined, requestOptions);
+    const { status, payload } = await send(method, path, body, requestOptions);
     if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
       throw new LanternApiError(
         status,
@@ -222,5 +233,12 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
         ListLibrariesRoute.path,
         requestOptions,
       )) as LibraryListResponse,
+    resolve: async (lib, body, requestOptions) =>
+      (await sendForBody(
+        ResolveRoute.method,
+        fillPath(ResolveRoute.path, { lib }),
+        requestOptions,
+        body,
+      )) as ResolveResponse,
   };
 }

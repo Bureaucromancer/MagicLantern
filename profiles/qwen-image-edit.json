@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "family": "qwen-image-edit",
+  "name": "Qwen-Image-Edit",
+  "licence": {
+    "id": "Apache-2.0",
+    "name": "Apache License 2.0",
+    "commercial_use": true,
+    "source": "card"
+  },
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["Qwen2.5-VL-7B"],
+    "source": "unconfirmed",
+    "note": "Qwen-Image's encoder; the research does not restate it for the edit models."
+  },
+  "negative_prompt": {
+    "behaviour": "cfg",
+    "source": "unconfirmed",
+    "note": "The cards run true CFG; whether they pass a negative prompt the way Qwen-Image's does is unconfirmed."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "source": "unconfirmed",
+    "note": "Qwen-Image's multiple. The output follows the reference image, so no native size is listed."
+  },
+  "modes": {
+    "edit": {
+      "defaults": {
+        "sampling.cfg": {
+          "value": 4,
+          "source": "card",
+          "note": "The cards' true_cfg_scale 4.0; sd.cpp's example uses 2.5."
+        },
+        "sampling.sampler": {
+          "value": "euler",
+          "source": "sdcpp"
+        },
+        "sampling.flow_shift": {
+          "value": 3,
+          "source": "sdcpp"
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": {
+        "sampling.cfg": {
+          "maximum": 1
+        },
+        "prompt.negative": {
+          "minLength": 1
+        }
+      },
+      "message": "At CFG 1 or below there is no unconditional pass, so the negative prompt has no effect."
+    }
+  ],
+  "variants": [
+    {
+      "id": "original",
+      "name": "Qwen-Image-Edit",
+      "modes": {
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 50,
+              "source": "card"
+            }
+          },
+          "collections": {
+            "inputs.ref": {
+              "max": 1,
+              "source": "card",
+              "note": "The original release edits one image."
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "2509",
+      "name": "Qwen-Image-Edit-2509",
+      "sources": [
+        {
+          "id": "card-2509",
+          "url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2509",
+          "title": "Model card: Qwen-Image-Edit-2509",
+          "checked": "2026-10-15"
+        }
+      ],
+      "notes": [
+        "The research gives no step count or reference limit for 2509, so the route's defaults apply.",
+        "sd.cpp needs --llm_vision for 2509; that is a route setting."
+      ]
+    },
+    {
+      "id": "2511",
+      "name": "Qwen-Image-Edit-2511",
+      "sources": [
+        {
+          "id": "card-2511",
+          "url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511",
+          "title": "Model card: Qwen-Image-Edit-2511",
+          "checked": "2026-10-15"
+        }
+      ],
+      "modes": {
+        "edit": {
+          "defaults": {
+            "sampling.steps": {
+              "value": 40,
+              "source": "card-2511"
+            }
+          },
+          "collections": {
+            "inputs.ref": {
+              "min": 1,
+              "source": "card-2511",
+              "note": "Multi-image editing; the research gives no maximum."
+            }
+          }
+        }
+      },
+      "notes": [
+        "sd.cpp needs --model-args qwen_image_zero_cond_t=true for 2511; that is a route setting."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/Qwen/Qwen-Image-Edit",
+      "title": "Model card: Qwen-Image-Edit",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/qwen_image_edit.md",
+      "title": "stable-diffusion.cpp: Qwen-Image-Edit",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "A separate family from Qwen-Image: it takes reference images and supports only edit.",
+    "Releases differ in steps and reference count: name one. `original` is the first Qwen-Image-Edit release (the research lists it alongside 2509 and 2511), whose card gives 50 steps and one image.",
+    "CFG: the cards' true_cfg_scale 4.0 against sd.cpp's example 2.5. The profile takes 4.0, as for Qwen-Image.",
+    "Sampler and flow shift follow sd.cpp (euler, flow_shift 3).",
+    "sd.cpp passes the reference images with -r."
+  ]
+}

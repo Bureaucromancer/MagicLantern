@@ -26,6 +26,7 @@ describe('the route contracts', () => {
       'ListLibrariesRoute',
       'LoginRoute',
       'LogoutRoute',
+      'ResolveRoute',
     ]);
   });
 
@@ -35,7 +36,9 @@ describe('the route contracts', () => {
         expect(route.path).toBe('/healthz');
         expect(route.url).toBe(route.path);
       } else {
-        expect(route.path, name).toBe(`${api.API_V1_PREFIX}${route.url}`);
+        // The path names parameters as OpenAPI does (`{lib}`), the url as Fastify does (`:lib`).
+        const url = route.url.replaceAll(/:([A-Za-z_][A-Za-z0-9_]*)/g, '{$1}');
+        expect(route.path, name).toBe(`${api.API_V1_PREFIX}${url}`);
       }
     }
   });
@@ -85,7 +88,11 @@ describe('the route contracts', () => {
   it('list the body refusals on every state-changing route, which parses a body even unasked', () => {
     const safe = new Set<string>(['GET', 'HEAD', 'OPTIONS']);
     const changing = routes.filter(([, route]) => !safe.has(route.method));
-    expect(changing.map(([name]) => name).sort()).toEqual(['LoginRoute', 'LogoutRoute']);
+    expect(changing.map(([name]) => name).sort()).toEqual([
+      'LoginRoute',
+      'LogoutRoute',
+      'ResolveRoute',
+    ]);
 
     for (const [name, route] of changing) {
       const statuses = Object.keys(route.schema.response ?? {});
@@ -189,5 +196,38 @@ describe('response schemas', () => {
   it('promise no 405: Fastify answers a known path under another method with 404 `not-found`', () => {
     expect(Object.values(api.ErrorCodes)).not.toContain('method-not-allowed');
     expect(api.ErrorCodes).not.toHaveProperty('methodNotAllowed');
+  });
+});
+
+describe('fillPath', () => {
+  it('fills each parameter as one encoded segment', () => {
+    expect(api.fillPath(api.ResolveRoute.path, { lib: 'lib_01JA0000000000000000000000' })).toBe(
+      '/api/v1/libraries/lib_01JA0000000000000000000000/resolve',
+    );
+    expect(api.fillPath('/a/{x}/b', { x: '../c d/e' })).toBe('/a/..%2Fc%20d%2Fe/b');
+  });
+
+  it('refuses a missing parameter', () => {
+    expect(() => api.fillPath(api.ResolveRoute.path, {})).toThrow(/`lib`/);
+  });
+});
+
+describe('ResolveBody', () => {
+  const request = {
+    schema_version: 1,
+    mode: 'txt2img',
+    prompt: { positive: 'x' },
+    sampling: { seed: 'random' },
+  };
+
+  it('takes a request and a model, and optionally a route', () => {
+    expect(Value.Check(api.ResolveBody, { request, model: 'mdl_a' })).toBe(true);
+    expect(Value.Check(api.ResolveBody, { request, model: 'mdl_a', route: 'rt_a' })).toBe(true);
+  });
+
+  it('refuses unknown fields, and ids with spaces or slashes', () => {
+    expect(Value.Check(api.ResolveBody, { request, model: 'mdl_a', preset: {} })).toBe(false);
+    expect(Value.Check(api.ResolveBody, { request, model: 'a b' })).toBe(false);
+    expect(Value.Check(api.ResolveBody, { request, model: 'a/b' })).toBe(false);
   });
 });

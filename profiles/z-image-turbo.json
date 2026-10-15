@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "family": "z-image-turbo",
+  "name": "Z-Image Turbo",
+  "licence": {
+    "id": "Apache-2.0",
+    "name": "Apache License 2.0",
+    "commercial_use": true,
+    "source": "card"
+  },
+  "prompt": {
+    "dialect": "natural",
+    "encoders": ["Qwen3-4B"],
+    "languages": ["en", "zh"],
+    "source": "card",
+    "note": "sd.cpp's example uses Qwen3-4B-Instruct-2507 as the text encoder."
+  },
+  "negative_prompt": {
+    "behaviour": "distilled",
+    "source": "card",
+    "note": "The card samples with guidance 0 and sd.cpp at cfg 1: CFG off, so a negative prompt has no effect."
+  },
+  "resolution": {
+    "multiple_of": 16,
+    "native": {
+      "width": 1024,
+      "height": 1024
+    },
+    "source": "unconfirmed",
+    "note": "1024x1024 is the card's example size (sd.cpp's example renders 512x1024). The multiple of 16 is likely but unconfirmed."
+  },
+  "modes": {
+    "txt2img": {
+      "defaults": {
+        "sampling.steps": {
+          "value": 8,
+          "source": "sdcpp",
+          "note": "Diffusers' example passes 9 steps, which is 8 forward passes; sd.cpp's --steps 8 is the same schedule."
+        },
+        "sampling.cfg": {
+          "value": 1,
+          "source": "sdcpp",
+          "note": "The card's guidance 0 is CFG off; sd.cpp writes CFG off as cfg 1."
+        },
+        "geometry.width": {
+          "value": 1024,
+          "source": "card"
+        },
+        "geometry.height": {
+          "value": 1024,
+          "source": "card"
+        }
+      }
+    }
+  },
+  "warnings": [
+    {
+      "code": "negative_prompt_ignored",
+      "when": {
+        "sampling.cfg": {
+          "maximum": 1
+        },
+        "prompt.negative": {
+          "minLength": 1
+        }
+      },
+      "message": "Z-Image Turbo runs without CFG at its recommended settings, so the negative prompt has no effect.",
+      "source": "card"
+    }
+  ],
+  "sources": [
+    {
+      "id": "card",
+      "url": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo",
+      "title": "Model card",
+      "checked": "2026-10-15"
+    },
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/z_image.md",
+      "title": "stable-diffusion.cpp: Z-Image",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "Steps: Diffusers' 9 and sd.cpp's 8 describe the same 8 forward passes; the profile uses sd.cpp's count, since its adapter is the first.",
+    "CFG: the card's guidance 0 and sd.cpp's cfg 1 both mean CFG off; the profile uses sd.cpp's convention.",
+    "No sampler or scheduler default: neither is confirmed, so the route's own default applies.",
+    "txt2img only."
+  ]
+}

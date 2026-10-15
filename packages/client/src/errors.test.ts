@@ -37,6 +37,17 @@ describe('refusalFrom', () => {
     );
   });
 
+  it('keeps a suggested value, the one other field an issue may carry', () => {
+    const error = refusalFrom(422, {
+      error: 'invalid',
+      message: 'x',
+      issues: [{ path: '/request/sampling/steps', message: 'must be <= 150', suggested: 150 }],
+    });
+    expect(error.issues).toEqual([
+      { path: '/request/sampling/steps', message: 'must be <= 150', suggested: 150 },
+    ]);
+  });
+
   it('copies only path and message from each issue', () => {
     const error = refusalFrom(422, {
       error: 'invalid',

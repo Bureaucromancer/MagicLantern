@@ -9,6 +9,7 @@ import {
   ListLibrariesRoute,
   LoginRoute,
   LogoutRoute,
+  type ResolveBody,
 } from '@bureaucromancer/lantern-schema';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,6 +19,29 @@ import { empty, type FakeAnswer, fakeFetch, json, text } from './test-fetch.js';
 
 const BASE = 'http://127.0.0.1:7600';
 const LIBRARY = { id: 'lib_01JA2B3C4D5E6F7G8H9JKMNPQR', name: 'Library', status: 'ok' } as const;
+const RESOLVE_BODY: ResolveBody = {
+  request: {
+    schema_version: 1,
+    mode: 'txt2img',
+    prompt: { positive: 'a lighthouse' },
+    sampling: { seed: 'random' },
+  },
+  model: 'mdl_a',
+};
+const RESOLUTION = {
+  effective: { ...RESOLVE_BODY.request, sampling: { seed: 7 } },
+  field_report: {},
+  route: {
+    id: 'rt_a',
+    backend_kind: 'sdcpp',
+    priority: 0,
+    health: { status: 'ok', load_state: 'cold' },
+  },
+  warnings: [],
+  skipped_routes: [],
+  descriptor_digest: 'd'.repeat(64),
+  provisional: true,
+};
 
 /** A client over a fake fetch that gives `answers` in turn. */
 function clientAnswering(...answers: FakeAnswer[]) {
@@ -71,6 +95,13 @@ describe('where requests go', () => {
       'GET',
       ListLibrariesRoute.path,
       json(200, { libraries: [] }),
+    ],
+    [
+      'resolve',
+      (c) => c.resolve(LIBRARY.id, RESOLVE_BODY),
+      'POST',
+      `/api/v1/libraries/${LIBRARY.id}/resolve`,
+      json(200, RESOLUTION),
     ],
   ];
 
@@ -151,6 +182,17 @@ describe('what is sent', () => {
 
     expect(fake.only().headers.get('content-type')).toBe('application/json');
     expect(JSON.parse(fake.only().body!)).toEqual({ password: 'correct horse' });
+  });
+
+  it('sends a resolve body as JSON to the library’s path, its id encoded', async () => {
+    const { client, fake } = clientAnswering(json(200, RESOLUTION));
+    expect(await client.resolve('lib/../x', { ...RESOLVE_BODY, route: 'rt_a' })).toEqual(
+      RESOLUTION,
+    );
+
+    expect(fake.only().url).toBe(`${BASE}/api/v1/libraries/lib%2F..%2Fx/resolve`);
+    expect(fake.only().headers.get('content-type')).toBe('application/json');
+    expect(JSON.parse(fake.only().body!)).toEqual({ ...RESOLVE_BODY, route: 'rt_a' });
   });
 
   it('sends no body and no content type when there is nothing to send', async () => {
@@ -326,6 +368,20 @@ describe('refusals', () => {
     expect(error.status).toBe(422);
     expect(error.code).toBe('invalid');
     expect(error.issues).toEqual(issues);
+  });
+
+  it('carry a resolve refusal’s issues, suggested values included', async () => {
+    const issues = [{ path: '/request/sampling/steps', message: 'must be <= 150', suggested: 150 }];
+    const { client } = clientAnswering(
+      json(422, { error: ErrorCodes.invalid, message: 'The body is not valid.', issues }),
+      json(404, { error: ErrorCodes.notFound, message: 'No such library.' }),
+    );
+    const invalid = await apiErrorOf(client.resolve(LIBRARY.id, RESOLVE_BODY));
+    const missing = await apiErrorOf(client.resolve(LIBRARY.id, RESOLVE_BODY));
+
+    expect(invalid.issues).toEqual(issues);
+    expect(missing.status).toBe(404);
+    expect(missing.code).toBe('not-found');
   });
 
   it.each([
