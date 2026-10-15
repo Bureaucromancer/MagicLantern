@@ -19,14 +19,24 @@ const routes = Object.entries(api as Record<string, unknown>).filter(
 describe('the route contracts', () => {
   it('are all found', () => {
     expect(routes.map(([name]) => name).sort()).toEqual([
+      'CreateLibraryRoute',
+      'DeleteAssetRoute',
+      'GetAssetRoute',
       'GetHealthRoute',
       'GetInfoRoute',
+      'GetLineageRoute',
       'GetOpenApiRoute',
+      'GetProvenanceRoute',
       'GetSessionRoute',
+      'GetThumbnailRoute',
+      'ListAssetsRoute',
       'ListLibrariesRoute',
       'LoginRoute',
       'LogoutRoute',
+      'PatchAssetRoute',
+      'RenameLibraryRoute',
       'ResolveRoute',
+      'UploadAssetRoute',
     ]);
   });
 
@@ -89,18 +99,26 @@ describe('the route contracts', () => {
     const safe = new Set<string>(['GET', 'HEAD', 'OPTIONS']);
     const changing = routes.filter(([, route]) => !safe.has(route.method));
     expect(changing.map(([name]) => name).sort()).toEqual([
+      'CreateLibraryRoute',
+      'DeleteAssetRoute',
       'LoginRoute',
       'LogoutRoute',
+      'PatchAssetRoute',
+      'RenameLibraryRoute',
       'ResolveRoute',
+      'UploadAssetRoute',
     ]);
 
     for (const [name, route] of changing) {
       const statuses = Object.keys(route.schema.response ?? {});
       // Unreadable or empty JSON, over the size limit, not JSON at all.
       expect(statuses, name).toEqual(expect.arrayContaining(['400', '413', '415']));
-      // Only a body schema can fail validation.
-      if (route.schema.body === undefined) expect(statuses, name).not.toContain('422');
-      else expect(statuses, name).toContain('422');
+      // Only a body or path schema can fail validation.
+      if (route.schema.body === undefined && route.schema.params === undefined) {
+        expect(statuses, name).not.toContain('422');
+      } else {
+        expect(statuses, name).toContain('422');
+      }
     }
   });
 });

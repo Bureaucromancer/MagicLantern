@@ -10,6 +10,8 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import type { LibraryStatus } from '@bureaucromancer/lantern-schema';
 
+import type { JobStore, Library } from './library-types.js';
+
 /**
  * Where store code reports what it did. The serve path adapts Fastify's pino
  * logger (logging.ts `storeLogFrom`); CLI commands print lines
@@ -65,12 +67,37 @@ export interface LibraryRecord {
   readonly schemaVersion: number | null;
 }
 
-/** The libraries opened at startup. A failed library is listed as unavailable, never thrown. */
+/**
+ * The libraries: those opened at startup, and those created since. A failed
+ * library is listed as unavailable, never thrown.
+ */
 export interface LibraryRegistry {
   list(): LibraryRecord[];
   get(id: string): LibraryRecord | undefined;
+  /** The library's assets and provenance; undefined unless it is `ok` or `read-only`. */
+  library(id: string): Library | undefined;
+  /** Its live jobs; undefined unless it is `ok` (a read-only library runs nothing). */
+  jobs(id: string): JobStore | undefined;
+  /**
+   * Creates and registers an empty library, usable at once. Throws
+   * {@link LibraryNameTakenError} when another library has the name.
+   */
+  create(name: string): Promise<LibraryRecord>;
+  /**
+   * Renames a library; undefined when there is no such library. Throws
+   * {@link LibraryNameTakenError} when another library has the name.
+   */
+  rename(id: string, name: string): Promise<LibraryRecord | undefined>;
   /** Closes every library database. Idempotent. */
   close(): void;
+}
+
+/** Another library already has this name, compared without regard to case. */
+export class LibraryNameTakenError extends Error {
+  constructor(name: string) {
+    super(`Another library is already called "${name}".`);
+    this.name = 'LibraryNameTakenError';
+  }
 }
 
 /** One database's migration outcome. */

@@ -12,6 +12,8 @@ export interface RecordedRequest {
   readonly method: string;
   readonly headers: Headers;
   readonly body: string | undefined;
+  /** A multipart body, as the FormData the client built. */
+  readonly form: FormData | undefined;
   readonly credentials: RequestCredentials | undefined;
   readonly signal: AbortSignal | undefined;
 }
@@ -32,14 +34,21 @@ export function fakeFetch(...answers: FakeAnswer[]): FakeFetch {
   const queue = [...answers];
 
   const fake = async (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> => {
-    if (typeof init.body !== 'string' && init.body !== undefined && init.body !== null) {
-      throw new Error('The client sent a body that is not a string.');
+    const form = init.body instanceof FormData ? init.body : undefined;
+    if (
+      form === undefined &&
+      typeof init.body !== 'string' &&
+      init.body !== undefined &&
+      init.body !== null
+    ) {
+      throw new Error('The client sent a body that is neither a string nor a FormData.');
     }
     const request: RecordedRequest = {
       url: input instanceof Request ? input.url : String(input),
       method: init.method ?? 'GET',
       headers: new Headers(init.headers),
-      body: init.body ?? undefined,
+      body: typeof init.body === 'string' ? init.body : undefined,
+      form,
       credentials: init.credentials,
       signal: init.signal ?? undefined,
     };

@@ -11,15 +11,22 @@
 
 import { registerOpenApiRoute } from '../http/openapi.js';
 import type { LanternApp } from '../http/types.js';
+import { registerAssetRoutes } from './assets.js';
 import { registerInfoRoutes } from './info.js';
 import { registerLibrariesRoutes } from './libraries.js';
 import { registerResolveRoutes } from './resolve.js';
 import { registerSessionRoutes } from './session.js';
 
-export function registerApiRoutes(api: LanternApp): void {
+/** What route registration may know of the config: values, never the data directory. */
+export interface ApiRouteOptions {
+  readonly maxUploadMb: number;
+}
+
+export function registerApiRoutes(api: LanternApp, options: ApiRouteOptions): void {
   registerSessionRoutes(api);
   registerInfoRoutes(api);
   registerLibrariesRoutes(api);
+  registerAssetRoutes(api, { maxUploadMb: options.maxUploadMb });
   registerResolveRoutes(api);
   registerOpenApiRoute(api);
 }

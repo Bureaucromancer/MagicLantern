@@ -7,9 +7,11 @@
  */
 
 export {
+  assetQueryString,
   createLanternClient,
   type LanternClient,
   type LanternClientOptions,
+  type ListAssetsOptions,
   type RequestOptions,
 } from './client.js';
 export {
@@ -21,7 +23,15 @@ export {
 } from './errors.js';
 // The wire types, so a consumer of the client needs no second import.
 export type {
+  AssetLineage,
+  AssetOrigin,
+  AssetPage,
+  AssetProvenance,
+  AssetSummary,
   AuthMode,
+  BytesState,
+  LibraryUsage,
+  LineageEdge,
   ErrorBody,
   ErrorCode,
   FieldReport,

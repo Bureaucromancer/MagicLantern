@@ -39,6 +39,11 @@ export const OPENAPI_TAGS = [
     description: 'Self-contained collections, each with its own database and assets.',
   },
   {
+    name: 'assets',
+    description:
+      "A library's content-addressed images: uploads, outputs and crops, with provenance and lineage.",
+  },
+  {
     name: 'generation',
     description: 'Resolving generation requests against models and their routes.',
   },

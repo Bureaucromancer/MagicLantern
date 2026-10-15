@@ -3,8 +3,9 @@
 
 /**
  * The command line: `lantern [serve]`, `lantern migrate`,
- * `lantern set-password [--clear]`, `lantern --help`, `lantern --version`,
- * with `--config <path>` and `--data <dir>`.
+ * `lantern set-password [--clear]`,
+ * `lantern library backup --out <dir> [--library <id>]`, `lantern --help`,
+ * `lantern --version`, with `--config <path>` and `--data <dir>`.
  *
  * Parsed with node:util `parseArgs` in strict mode. It already refuses a
  * missing value, but silently keeps the last of a duplicated flag, and
@@ -21,7 +22,8 @@
 
 import { parseArgs } from 'node:util';
 
-export type CommandName = 'serve' | 'migrate' | 'set-password' | 'help' | 'version';
+export type CommandName =
+  'serve' | 'migrate' | 'set-password' | 'library-backup' | 'help' | 'version';
 
 export interface CliArgs {
   readonly command: CommandName;
@@ -31,6 +33,10 @@ export interface CliArgs {
   readonly dataDir?: string;
   /** `set-password --clear`: remove the password record. */
   readonly clear: boolean;
+  /** `library backup --out`: where the backups go. */
+  readonly out?: string;
+  /** `library backup --library`: one library's id; every library when absent. */
+  readonly library?: string;
 }
 
 /** A bad command line or an unusable setting: printed as one sentence, exit 1, no stack. */
@@ -81,6 +87,8 @@ Commands:
   migrate                Bring the databases up to this version, then exit.
   set-password           Set the install-wide password, read from stdin.
   set-password --clear   Remove the password.
+  library backup --out <dir> [--library <id>]
+                         Copy libraries into <dir>, safely while the daemon runs.
 
 Options:
   --config <path>        The lantern.json to read (else LANTERN_CONFIG, else the platform default).
@@ -89,12 +97,23 @@ Options:
   -v, --version          Show the version.
 `;
 
-const COMMANDS: ReadonlySet<string> = new Set(['serve', 'migrate', 'set-password', 'help']);
+const COMMANDS: ReadonlySet<string> = new Set([
+  'serve',
+  'migrate',
+  'set-password',
+  'library',
+  'help',
+]);
+
+/** The subcommands of `lantern library`. */
+const LIBRARY_COMMANDS: ReadonlySet<string> = new Set(['backup']);
 
 const OPTIONS = {
   config: { type: 'string' },
   data: { type: 'string' },
   clear: { type: 'boolean' },
+  out: { type: 'string' },
+  library: { type: 'string' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
 } as const;
@@ -154,24 +173,42 @@ export function parseCliArgs(argv: readonly string[]): CliArgs {
       }
     }
   }
-  if (positionals.length > 1) {
-    throw new UsageError('Too many arguments. Run `lantern --help` for usage.');
-  }
   const named = positionals[0] ?? 'serve';
   if (!COMMANDS.has(named)) {
     throw new UsageError(`Unknown command "${named}". Run \`lantern --help\` for usage.`);
   }
+  const subcommand = positionals[1];
+  if (named === 'library') {
+    if (subcommand === undefined || !LIBRARY_COMMANDS.has(subcommand)) {
+      throw new UsageError(
+        subcommand === undefined
+          ? '`lantern library` needs a command: backup.'
+          : `Unknown library command "${subcommand}". Run \`lantern --help\` for usage.`,
+      );
+    }
+  }
+  if (positionals.length > (named === 'library' ? 2 : 1)) {
+    throw new UsageError('Too many arguments. Run `lantern --help` for usage.');
+  }
 
-  for (const flag of ['config', 'data'] as const) {
+  for (const flag of ['config', 'data', 'out', 'library'] as const) {
     if (values[flag] === '') throw new UsageError(`--${flag} needs a value.`);
   }
 
-  let command = named as CommandName;
+  let command: CommandName = named === 'library' ? 'library-backup' : (named as CommandName);
   if (values.help === true) command = 'help';
   else if (values.version === true) command = 'version';
 
   if (values.clear === true && command !== 'set-password' && command !== 'help') {
     throw new UsageError('--clear only goes with `lantern set-password`.');
+  }
+  const backupFlag =
+    values.out !== undefined ? 'out' : values.library !== undefined ? 'library' : null;
+  if (backupFlag !== null && command !== 'library-backup' && command !== 'help') {
+    throw new UsageError(`--${backupFlag} only goes with \`lantern library backup\`.`);
+  }
+  if (command === 'library-backup' && values.out === undefined) {
+    throw new UsageError('`lantern library backup` needs --out <dir>: where the backups go.');
   }
 
   return {
@@ -179,5 +216,7 @@ export function parseCliArgs(argv: readonly string[]): CliArgs {
     ...(values.config === undefined ? {} : { configPath: values.config }),
     ...(values.data === undefined ? {} : { dataDir: values.data }),
     clear: values.clear === true,
+    ...(values.out === undefined ? {} : { out: values.out }),
+    ...(values.library === undefined ? {} : { library: values.library }),
   };
 }

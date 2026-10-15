@@ -40,4 +40,12 @@ declare module 'fastify' {
     /** Built once at startup. Read in handlers only, never at registration. */
     services: AppServices;
   }
+
+  interface FastifyContextConfig {
+    /**
+     * The route takes `multipart/form-data` (uploads) instead of JSON; the
+     * security guard's JSON-only rule makes this one exception.
+     */
+    multipart?: boolean;
+  }
 }

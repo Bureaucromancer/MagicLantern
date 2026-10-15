@@ -98,7 +98,7 @@ docs/
 | Outbound HTTP | `fetch` (undici) | Long requests need StoryEngine-style "patient fetch" timeout handling |
 | Pixel hashing | A pure PNG decoder (pngjs) | No colour management, so hashes stay stable across library upgrades (A25) |
 | Thumbnails | sharp | A native dependency: the tarball becomes specific to architecture and C library (A27) |
-| PNG metadata | A small codec over `png-chunks-extract` and `png-chunks-encode` | Writes iTXt, which `png-chunk-text` can't (A24) |
+| PNG metadata | A small codec over `node:zlib` (`crc32`, capped `inflateSync`) | Writes iTXt, which `png-chunk-text` can't (A24). Phase 3 dropped `png-chunks-extract` and `png-chunks-encode`: `zlib.crc32` was their one real job |
 | IDs | ULID for jobs and other rows; SHA-256 hex for assets | ULIDs sort by creation time |
 | Config | A JSON file plus environment variables | Like StoryEngine's `config.json` |
 | UI | React 19, Vite, TanStack Query, Router and Virtual, Tailwind v4 configured in CSS, Radix primitives | StoryEngine's client stack |
@@ -168,8 +168,9 @@ Lantern is a local app, and a library selector stands in for user accounts. A li
 | `job_payloads` | job_id, canonical, effective, field_report, wire, backend_response | `wire` stores inline images as `{"$asset": sha256}` placeholders (A15) |
 | `job_inputs` | job_id, asset_id, role, weight, region, crop, source_library | |
 | `job_outputs` | job_id, asset_id, index, seed | |
-| `assets` | id (SHA-256), media_type, bytes, width, height, frames, duration_ms, pixel_hash, pixel_hash_alg, origin (`generated`, `uploaded`, `derived`, `imported`), bytes_state (`present`, `trashed`, `evicted`), retention (`keep`, `client_copy`), rating, created_at | `derived` covers crops (A7) |
-| `prompts_fts` | FTS5, external content over the positive and negative prompts | `unicode61` with `tokenchars '_'`, so `long_hair` stays one token; written in the job's transaction |
+| `assets` | id (SHA-256), media_type, bytes, width, height, frames, duration_ms, pixel_hash, pixel_hash_alg, origin (`generated`, `uploaded`, `derived`, `imported`), bytes_state (`present`, `trashed`, `evicted`), retention (`keep`, `client_copy`), rating, derived_from, derivation, created_at | `derived` covers crops (A7); `derived_from` and `derivation` (`{crop}`) link one to its source |
+| `job_prompts` | id (integer), job_id, positive, negative | The content table behind `prompts_fts`. FTS rows are found by rowid, and an implicit rowid may change on `VACUUM`, so it has an integer key of its own |
+| `prompts_fts` | FTS5, external content over `job_prompts` | `unicode61` with `tokenchars '_'`, so `long_hair` stays one token; kept in step by triggers, so it is written in the job's transaction |
 
 The `jobs` columns that need explaining:
 
@@ -426,6 +427,16 @@ export interface Adapter {
   - `client_copy` assets may be evicted.
   - A sweep at startup removes temp and orphaned files.
   - `lantern library backup` uses `VACUUM INTO`, because copying a folder while its WAL is live isn't safe.
+- **Choices made in Phase 3 (ST1 to ST6).** What the points above leave open:
+  - **One write at a time per library.** Decoding, hashing and thumbnails run unlocked; writing the files and committing the rows run one after another, so an upload and a delete of the same bytes cannot leave a `present` row with no file. Files are written before their rows, with fsync of the file and its directory.
+  - **Outputs.** `lantern` goes before the first IDAT, replacing any earlier one; it holds the job id, library id, the output's index and seed, the model, `canonical`, `effective` and `route_snapshot`. A backend's text chunks are copied into `backend_response.png_text`. A job imported twice (recovery) is a no-op.
+  - **Uploads** are `multipart/form-data` with one part named `file`; the security guard's JSON-only rule has that one exception, marked on the route, and the Origin check is what defends it. Accepted: PNG, JPEG, WebP, GIF and AVIF, up to `limits.maxUploadMb` (50 by default, `LANTERN_MAX_UPLOAD_MB`) and 8192 × 8192 pixels; the whole image must decode. Only PNGs get a pixel hash. The same bytes again answer the existing asset (200), and bring back deleted bytes.
+  - **Bytes** are served with their own media type, `ETag` (the id), `Cache-Control: private, max-age=31536000, immutable` and a sandboxing CSP. Thumbnails are WebP, 384 px on the longer side, remade on read when the cache lost them.
+  - **Queries** list present assets only, newest first, with an opaque cursor over `(created_at, id)`. Prompt search quotes each word, so FTS syntax in a search is text, and every word must appear.
+  - **Lineage** walks outwards with index lookups, breadth first, to at most 500 assets, and says when it was cut short.
+  - **Names** are unique among libraries, ignoring case. A rename writes `library.json` too, except for a library a newer build wrote.
+  - **Refusals:** a library that could not be opened is 409 `library-unavailable`; a write to one open read-only is 409 `library-read-only`; deleted bytes are 410 `gone`; a taken name is 409 `conflict`.
+  - **Backup** copies the `VACUUM INTO` snapshot and exactly the asset files it lists into `<out>/<library id>/`, plus `library.json` and the spool. It reads the live data read-only and takes no lock, so it runs beside the daemon; an asset deleted meanwhile is marked trashed in the copy. Thumbnails and migration snapshots are left out. To restore, stop Lantern and put the folder back under `libraries/`.
 
 ### HTTP API (v1)
 

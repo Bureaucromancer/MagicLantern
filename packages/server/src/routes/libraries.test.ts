@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { LanternApp } from '../http/types.js';
 import type { AppServices, AuthService } from '../services.js';
 import type { LibraryRecord, LibraryRegistry } from '../store/index.js';
-import { testModelServices } from '../test-app.js';
+import { fakeLibraries, testModelServices } from '../test-app.js';
 import { registerLibrariesRoutes, toLibrarySummary } from './libraries.js';
 
 const OK: LibraryRecord = {
@@ -46,9 +46,9 @@ const unusedAuth = new Proxy({} as AuthService, {
 
 function registryOf(records: () => LibraryRecord[]): LibraryRegistry {
   return {
+    ...fakeLibraries(),
     list: records,
     get: (id) => records().find((record) => record.id === id),
-    close: () => undefined,
   };
 }
 

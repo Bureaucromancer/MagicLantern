@@ -33,16 +33,22 @@
     "emit-openapi": "node scripts/emit-openapi.ts"
   },
   "scriptsNote": "`dev` runs from packages/server, so `../../data` is the repository's gitignored data/ directory; `--config` points there too (a missing file means defaults), so a developer's real platform lantern.json never reaches the dev daemon. The Vite dev server proxies /api with changeOrigin (Host becomes the daemon's) but keeps the browser's Origin, which is why the dev origin is allowlisted here rather than rewritten in the proxy. `emit-openapi` runs the script with Node's built-in type stripping; the script imports the built app from dist, so the spec describes what ships.",
-  "dependencyNote": "Fastify 5 (5.12.5, deliberately not StoryEngine's 5.12.0, which has seven published advisories, four of them high; 5.12.5 fixes them all and was the newest release at least two weeks old; StoryEngine should bump too, and tools/advisory-floors.test.ts keeps the lockfile from going back) with @fastify/static (serves the built app), @fastify/cookie (the session cookie, signed by hand) and @fastify/swagger (the OpenAPI spec is generated from route schemas, rule 1). Ajv is declared directly because the server installs its own non-rewriting instance (rule 5) and the schema package must stay TypeBox-only. @fastify/type-provider-typebox is imported for types only: 5.2.0 is the last line that accepts @sinclair/typebox 0.34, and its validator compiler is never used. write-file-atomic does temp-write, fsync and rename, plus mode and cleanup handling that hand-rolled versions get wrong; it ships no types, so src/types/write-file-atomic.d.ts declares the surface we call.",
+  "dependencyNote": "Fastify 5 (5.12.5, deliberately not StoryEngine's 5.12.0, which has seven published advisories, four of them high; 5.12.5 fixes them all and was the newest release at least two weeks old; StoryEngine should bump too, and tools/advisory-floors.test.ts keeps the lockfile from going back) with @fastify/static (serves the built app), @fastify/cookie (the session cookie, signed by hand) and @fastify/swagger (the OpenAPI spec is generated from route schemas, rule 1). Ajv is declared directly because the server installs its own non-rewriting instance (rule 5) and the schema package must stay TypeBox-only. @fastify/type-provider-typebox is imported for types only: 5.2.0 is the last line that accepts @sinclair/typebox 0.34, and its validator compiler is never used. write-file-atomic does temp-write, fsync and rename, plus mode and cleanup handling that hand-rolled versions get wrong; it ships no types, so src/types/write-file-atomic.d.ts declares the surface we call. Phase 3: @fastify/multipart (MIT) parses uploads as a stream with per-request limits, which a JSON body parser cannot; 10.1.2 is the newest release at least two weeks old. sharp (Apache-2.0, A27) decodes, thumbnails and crops; it is native, so the tarball becomes specific to architecture and C library, and it is never used to hash or to rewrite an asset's bytes. pngjs (MIT, no dependencies) is the pure decoder behind the pixel hash (A25), so a libvips upgrade cannot change stored hashes; @types/pngjs is a dev dependency for its types. The PNG chunk codec is our own over node:zlib (crc32 and a capped inflate), so png-chunks-extract and png-chunks-encode, which the plan named, are not dependencies.",
   "dependencies": {
     "@bureaucromancer/lantern-schema": "workspace:*",
     "@fastify/cookie": "11.1.2",
+    "@fastify/multipart": "10.1.2",
     "@fastify/static": "10.1.3",
     "@fastify/swagger": "9.9.0",
     "@fastify/type-provider-typebox": "5.2.0",
     "@sinclair/typebox": "0.34.52",
     "ajv": "8.20.0",
     "fastify": "5.12.5",
+    "pngjs": "7.0.0",
+    "sharp": "0.35.5",
     "write-file-atomic": "8.0.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "6.0.5"
   }
 }

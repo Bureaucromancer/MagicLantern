@@ -31,8 +31,12 @@ import { createResolver, type SeedSource } from './engine/resolver/index.js';
 import { loggerOptions, type LogDestination } from './logging.js';
 import type { AppServices } from './services.js';
 import { createValidator } from './validation/ajv.js';
+import { newId } from './ids.js';
+import { openInstallStore } from './store/install.js';
+import { openLibraryRegistry } from './store/libraries.js';
 import { readSecrets, writeSecrets } from './store/secrets.js';
-import type { LibraryRecord, LibraryRegistry } from './store/types.js';
+import { testBoot } from './store/test-store.js';
+import type { InstallStore, LibraryRecord, LibraryRegistry, StoreLog } from './store/types.js';
 
 export const TEST_PORT = 7600;
 export const TEST_HOST = `localhost:${String(TEST_PORT)}`;
@@ -68,11 +72,31 @@ export function testConfig(dataDir: string, overrides: ConfigOverrides = {}): Re
   };
 }
 
-/** An in-memory registry, so HTTP tests do not depend on the store's databases. */
+/**
+ * An in-memory registry, so HTTP tests of the routes that only list libraries
+ * do not depend on the store's databases. Its libraries have no handle (as
+ * if none had opened); tests of the library routes use {@link TestAppOptions.storage}.
+ */
 export function fakeLibraries(records: readonly LibraryRecord[] = []): LibraryRegistry {
+  const all = [...records];
   return {
-    list: () => [...records],
-    get: (id) => records.find((record) => record.id === id),
+    list: () => [...all],
+    get: (id) => all.find((record) => record.id === id),
+    library: () => undefined,
+    jobs: () => undefined,
+    create: (name) => {
+      const record = libraryRecord(newId('lib'), name);
+      all.push(record);
+      return Promise.resolve(record);
+    },
+    rename: (id, name) => {
+      const index = all.findIndex((record) => record.id === id);
+      const existing = all[index];
+      if (existing === undefined) return Promise.resolve(undefined);
+      const renamed = { ...existing, name };
+      all[index] = renamed;
+      return Promise.resolve(renamed);
+    },
     close: () => undefined,
   };
 }
@@ -134,6 +158,12 @@ export interface TestAppOptions {
   readonly now?: () => number;
   /** Use this data directory instead of a fresh one (kept on close). */
   readonly dataDir?: string;
+  /**
+   * Open the real install database and library registry in the data
+   * directory (a default library is created), instead of `libraries`. Closed
+   * with the app.
+   */
+  readonly storage?: boolean;
 }
 
 type RequestOptions = Omit<InjectOptions, 'cookies'> & {
@@ -144,6 +174,8 @@ type RequestOptions = Omit<InjectOptions, 'cookies'> & {
 export interface TestApp {
   readonly app: LanternApp;
   readonly dataDir: string;
+  /** The registry the app serves. */
+  readonly libraries: LibraryRegistry;
   /** Cookies the "browser" holds, by name. */
   readonly cookies: Map<string, string>;
   // Properties, not methods, so tests can destructure them.
@@ -164,6 +196,13 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
   const secrets = stored ?? { sessionKey: generateSecret() };
   if (stored === null) await writeSecrets(dataDir, secrets);
 
+  let install: InstallStore | null = null;
+  let libraries = options.libraries ?? fakeLibraries();
+  if (options.storage === true) {
+    install = await openInstallStore(dataDir, { boot: testBoot(), log: silentStoreLog() });
+    libraries = await openLibraryRegistry(install, dataDir, { log: silentStoreLog() });
+  }
+
   const app = await buildApp(
     {
       version: TEST_VERSION,
@@ -174,7 +213,7 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
         cookieSecure: config.auth.cookieSecure,
         ...(options.now === undefined ? {} : { now: options.now }),
       }),
-      libraries: options.libraries ?? fakeLibraries(),
+      libraries,
       ...testModelServices(options.models, options.drawSeed),
     },
     {
@@ -211,6 +250,7 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
   return {
     app,
     dataDir,
+    libraries,
     cookies,
     request,
     signIn: (password) =>
@@ -222,9 +262,19 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
       }),
     async close() {
       await app.close();
+      if (install !== null) {
+        libraries.close();
+        install.close();
+      }
       if (!borrowed) await rm(dataDir, { recursive: true, force: true });
     },
   };
+}
+
+/** A store log that says nothing. */
+export function silentStoreLog(): StoreLog {
+  const nothing = (): void => undefined;
+  return { info: nothing, warn: nothing, error: nothing };
 }
 
 /** Collects log lines as parsed JSON records. */

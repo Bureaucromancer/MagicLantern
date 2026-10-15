@@ -444,3 +444,103 @@ describe('failures that are not answers', () => {
     expect(errorCode(error)).toBeNull();
   });
 });
+
+describe('libraries and assets', () => {
+  const ASSET = 'a'.repeat(64);
+  const SUMMARY = {
+    id: ASSET,
+    media_type: 'image/png',
+    bytes: 10,
+    width: 1,
+    height: 1,
+    frames: null,
+    origin: 'uploaded',
+    bytes_state: 'present',
+    retention: 'keep',
+    rating: null,
+    pixel_hash: null,
+    pixel_hash_alg: null,
+    created_at: '2026-10-15T00:00:00.000Z',
+    output_of: null,
+  };
+  const LIB = LIBRARY.id;
+
+  it('creates and renames libraries with a JSON name', async () => {
+    const { client, fake } = clientAnswering(json(201, LIBRARY), json(200, LIBRARY));
+    expect(await client.createLibrary('Sketches')).toEqual(LIBRARY);
+    expect(await client.renameLibrary(LIB, 'Main')).toEqual(LIBRARY);
+    const [create, rename] = fake.requests;
+    expect([create!.method, create!.url, JSON.parse(create!.body!)]).toEqual([
+      'POST',
+      `${BASE}/api/v1/libraries`,
+      { name: 'Sketches' },
+    ]);
+    expect([rename!.method, rename!.url, JSON.parse(rename!.body!)]).toEqual([
+      'PATCH',
+      `${BASE}/api/v1/libraries/${LIB}`,
+      { name: 'Main' },
+    ]);
+  });
+
+  it('uploads a file as multipart, leaving the content type and boundary to fetch', async () => {
+    const { client, fake } = clientAnswering(json(201, SUMMARY));
+    const file = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+    expect(await client.uploadAsset(LIB, file)).toEqual(SUMMARY);
+    const request = fake.only();
+    expect(request.url).toBe(`${BASE}/api/v1/libraries/${LIB}/assets`);
+    expect(request.headers.has('content-type')).toBe(false);
+    expect(request.form?.get('file')).toBeInstanceOf(Blob);
+    expect([...request.form!.keys()]).toEqual(['file']);
+  });
+
+  it('writes the query string, numbers as numbers, nothing for what is absent', async () => {
+    const page = { assets: [SUMMARY], next_cursor: null };
+    const { client, fake } = clientAnswering(json(200, page), json(200, page));
+    expect(
+      await client.listAssets(LIB, { q: 'long_hair red', ratingMin: 3, limit: 20, cursor: 'abc' }),
+    ).toEqual(page);
+    await client.listAssets(LIB);
+    const [filtered, plain] = fake.requests;
+    expect(filtered!.url).toBe(
+      `${BASE}/api/v1/libraries/${LIB}/assets?q=long_hair+red&rating_min=3&limit=20&cursor=abc`,
+    );
+    expect(plain!.url).toBe(`${BASE}/api/v1/libraries/${LIB}/assets`);
+  });
+
+  it('reads provenance and lineage, rates and deletes', async () => {
+    const { client, fake } = clientAnswering(
+      json(200, { asset: SUMMARY, job: null, derived_from: null }),
+      json(200, { asset: ASSET, nodes: [SUMMARY], edges: [], truncated: false }),
+      json(200, { ...SUMMARY, rating: 4 }),
+      empty(204),
+    );
+    await client.assetProvenance(LIB, ASSET);
+    await client.assetLineage(LIB, ASSET);
+    expect((await client.rateAsset(LIB, ASSET, 4)).rating).toBe(4);
+    await client.deleteAsset(LIB, ASSET);
+    expect(fake.requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+      `GET ${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}/provenance`,
+      `GET ${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}/lineage`,
+      `PATCH ${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}`,
+      `DELETE ${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}`,
+    ]);
+    expect(JSON.parse(fake.requests[2]!.body!)).toEqual({ rating: 4 });
+    expect(fake.requests[3]!.body).toBeUndefined();
+  });
+
+  it('builds image URLs without making a request', () => {
+    const { client, fake } = clientAnswering();
+    expect(client.assetUrl(LIB, ASSET)).toBe(`${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}`);
+    expect(client.thumbnailUrl(LIB, ASSET)).toBe(
+      `${BASE}/api/v1/libraries/${LIB}/assets/${ASSET}/thumb`,
+    );
+    expect(fake.requests).toEqual([]);
+  });
+
+  it('rejects a taken name with conflict', async () => {
+    const { client } = clientAnswering(
+      json(409, { error: 'conflict', message: 'Another library is already called "A".' }),
+    );
+    expect((await apiErrorOf(client.createLibrary('A'))).code).toBe(ErrorCodes.conflict);
+  });
+});

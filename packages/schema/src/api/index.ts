@@ -3,6 +3,7 @@
 
 /** The v1 HTTP API contract, shared by the daemon (routes) and lantern-client. */
 
+export * from './assets.js';
 export * from './errors.js';
 export * from './health.js';
 export * from './info.js';

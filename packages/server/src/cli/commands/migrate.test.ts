@@ -8,6 +8,7 @@ import { PassThrough } from 'node:stream';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { LIBRARY_SCHEMA_VERSION } from '../../store/migrations.js';
 import { dataPaths } from '../../store/paths.js';
 import {
   aProcessHoldingTheLock,
@@ -54,7 +55,9 @@ describe('migrateDataDir', () => {
     const stdout = capture();
     expect(await migrateDataDir(options(stdout))).toBe(0);
     expect(stdout.text()).toMatch(
-      /^lantern\.db: created at schema 1\.\nLibrary "Library" \(lib_[0-9A-Z]{26}\): created at schema 1\.\n$/,
+      new RegExp(
+        `^lantern\\.db: created at schema 1\\.\\nLibrary "Library" \\(lib_[0-9A-Z]{26}\\): created at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
+      ),
     );
     expect(lockIsFreeElsewhere(dataPaths(dataDir).lock)).toBe(true);
   });
@@ -64,7 +67,9 @@ describe('migrateDataDir', () => {
     const stdout = capture();
     expect(await migrateDataDir(options(stdout))).toBe(0);
     expect(stdout.text()).toMatch(
-      /^lantern\.db: up to date at schema 1\.\nLibrary .*: up to date at schema 1\.\n$/,
+      new RegExp(
+        `^lantern\\.db: up to date at schema 1\\.\\nLibrary .*: up to date at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
+      ),
     );
   });
 

@@ -11,7 +11,7 @@
 
 import { type Static, type TObject, Type } from '@sinclair/typebox';
 
-/** The codes the Phase 1 daemon answers with. Newer daemons may add more. */
+/** The codes the daemon answers with. Newer daemons may add more. */
 export const ErrorCodes = {
   /** 422: the request failed schema validation; `issues` names each field. */
   invalid: 'invalid',
@@ -38,6 +38,14 @@ export const ErrorCodes = {
   forbidden: 'forbidden',
   /** 413: the body is over the daemon's size limit. */
   payloadTooLarge: 'payload-too-large',
+  /** 409: the change would clash with what is there, such as a second library with the same name. */
+  conflict: 'conflict',
+  /** 409: the library was written by a newer Lantern and is open read-only. */
+  libraryReadOnly: 'library-read-only',
+  /** 409: the library could not be opened (see its `reason` in the library list). */
+  libraryUnavailable: 'library-unavailable',
+  /** 410: the asset's bytes were deleted; its record and provenance remain (A23). */
+  gone: 'gone',
   /** 503: the daemon is shutting down; try again once it is back. */
   unavailable: 'unavailable',
   /** 500: anything unexpected; the cause is only in the daemon's log. */

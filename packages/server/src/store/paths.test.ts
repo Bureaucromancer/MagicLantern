@@ -131,6 +131,10 @@ describe('library paths', () => {
       manifest: join(libRoot, DATA_LAYOUT.libraryManifest),
       db: join(libRoot, DATA_LAYOUT.libraryDb),
       backups: join(libRoot, 'backups'),
+      assets: join(libRoot, 'assets'),
+      incoming: join(libRoot, 'incoming'),
+      cache: join(libRoot, 'cache'),
+      thumbs: join(libRoot, 'cache', 'thumbs'),
     });
   });
 

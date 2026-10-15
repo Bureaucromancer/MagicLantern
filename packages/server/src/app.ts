@@ -8,7 +8,7 @@
  * Order matters and is fixed here: the validator compiler and parsers, the
  * error handling, the in-flight tracking shutdown waits on, the security
  * hooks (every request, static files included), the refusal of requests that
- * arrive while shutting down, the cookie parser, then the
+ * arrive while shutting down, the cookie and multipart parsers, then the
  * OpenAPI plugin *before* any route, then `/healthz`, then the API plugin
  * under `/api/v1` with its auth gate, then the built app and the not-found
  * handler last. Requests the router refuses before any hook runs go through
@@ -22,6 +22,7 @@ import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 
 import fastifyCookie from '@fastify/cookie';
+import fastifyMultipart from '@fastify/multipart';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { API_V1_PREFIX, ErrorCodes } from '@bureaucromancer/lantern-schema';
 import Fastify, { type FastifyServerOptions } from 'fastify';
@@ -56,7 +57,7 @@ export interface AppOptions {
   readonly machine?: MachineNames;
 }
 
-/** A JSON body far beyond anything the API takes; uploads will get their own limit. */
+/** A JSON body far beyond anything the API takes; uploads have their own (`limits.maxUploadMb`). */
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
 /**
@@ -108,6 +109,10 @@ export async function buildApp(services: AppServices, options: AppOptions): Prom
   refuseWhileClosing(app, inFlight);
   // No secret: the session cookie is signed by hand (auth/session.ts).
   await app.register(fastifyCookie);
+  // The multipart/form-data parser, for uploads. Every route but those marked
+  // `multipart` refuses that type in the security guard before it is parsed;
+  // the upload route sets its own limits per request.
+  await app.register(fastifyMultipart, { throwFileSizeLimit: true });
 
   await registerOpenApi(app);
 
@@ -115,7 +120,7 @@ export async function buildApp(services: AppServices, options: AppOptions): Prom
   await app.register(
     (api, _pluginOptions, done) => {
       registerAuthGate(api);
-      registerApiRoutes(api);
+      registerApiRoutes(api, { maxUploadMb: config.limits.maxUploadMb });
       done();
     },
     { prefix: API_V1_PREFIX },

@@ -14,7 +14,7 @@ import type { MigrationStep } from './db.js';
 import { createLibrary, type LibraryOptions } from './library.js';
 import { openInstall } from './install.js';
 import { openLibraries, openLibraryRegistry, type OpenedLibraries } from './libraries.js';
-import { LIBRARY_STEPS } from './migrations.js';
+import { LIBRARY_SCHEMA_VERSION, LIBRARY_STEPS } from './migrations.js';
 import { dataPaths, libraryPaths, libraryRelativePath } from './paths.js';
 import {
   collectingLog,
@@ -25,7 +25,10 @@ import {
   withDatabase,
   type LogLine,
 } from './test-store.js';
-import type { InstallStore, LibraryRecord } from './types.js';
+import { LibraryNameTakenError, type InstallStore, type LibraryRecord } from './types.js';
+
+/** The library schema this build writes. */
+const V = LIBRARY_SCHEMA_VERSION;
 
 let dataDir: string;
 let install: InstallStore;
@@ -87,10 +90,10 @@ describe('the default library', () => {
       schemaVersion: LIBRARY_STEPS.length,
     });
     expect(registry.get(library.id)).toEqual(library);
-    expect(migrations.get(library.id)).toEqual({ from: 0, to: 1, snapshot: null });
+    expect(migrations.get(library.id)).toEqual({ from: 0, to: V, snapshot: null });
 
     const paths = libraryPaths(dataDir, library.path);
-    expect(userVersionOf(paths.db)).toBe(1);
+    expect(userVersionOf(paths.db)).toBe(V);
     expect(
       withDatabase(paths.db, (db) => db.prepare('select key, value from meta').all(), true),
     ).toEqual([{ key: 'min_reader', value: '1' }]);
@@ -99,7 +102,7 @@ describe('the default library', () => {
     expect(manifest).toEqual({
       id: library.id,
       name: 'Library',
-      schema: 1,
+      schema: V,
       min_reader: 1,
       created_at: expect.any(String),
     });
@@ -116,7 +119,7 @@ describe('the default library', () => {
 
     const { registry, migrations, lines } = await open();
     expect(registry.list()).toEqual([record]);
-    expect(migrations.get(record.id)).toEqual({ from: 1, to: 1, snapshot: null });
+    expect(migrations.get(record.id)).toEqual({ from: V, to: V, snapshot: null });
     expect(await readdir(dataPaths(dataDir).libraries)).toEqual([record.id]);
     expect(await readFile(paths.manifest, 'utf8')).toBe(manifestBefore);
     expect(lines).toEqual([]);
@@ -127,7 +130,7 @@ describe('the default library', () => {
     const db = new DatabaseSync(join(dataDir, 'not-the-install.db'));
     const unregistrable: InstallStore = {
       db,
-      schemaVersion: 1,
+      schemaVersion: V,
       heartbeat: () => undefined,
       close: () => undefined,
     };
@@ -167,7 +170,7 @@ describe('an empty registry over library folders already on disk', () => {
 
     const { registry, migrations, lines } = await open();
     expect(registry.list()).toEqual([{ ...record, name: 'Holiday' }]);
-    expect(migrations.get(record.id)).toEqual({ from: 1, to: 1, snapshot: null });
+    expect(migrations.get(record.id)).toEqual({ from: V, to: V, snapshot: null });
     expect(await readdir(dataPaths(dataDir).libraries)).toEqual([record.id]);
     expect(install.db.prepare('select id, name, path, created_at from libraries').all()).toEqual([
       {
@@ -215,7 +218,7 @@ describe('library.json', () => {
     const { record, paths } = await defaultLibrary();
     await rm(paths.manifest);
     const { lines } = await open();
-    expect(await manifestOf(paths.manifest)).toMatchObject({ id: record.id, schema: 1 });
+    expect(await manifestOf(paths.manifest)).toMatchObject({ id: record.id, schema: V });
     expect(messages(lines)).toEqual(['Wrote a missing library.json.']);
   });
 
@@ -245,7 +248,7 @@ describe('library.json', () => {
     expect(await manifestOf(paths.manifest)).toEqual({
       id: record.id,
       name: 'Library',
-      schema: 1,
+      schema: V,
       min_reader: 1,
       created_at: new Date(Number(createdAt)).toISOString(),
     });
@@ -287,43 +290,45 @@ describe('a library written by a newer build', () => {
   }
 
   it('opens read-only when its min_reader is one this build knows, writing nothing', async () => {
-    const { record, paths, manifestText } = await aheadOf(2, '1');
+    const { record, paths, manifestText } = await aheadOf(V + 1, '1');
     const { registry, migrations } = await open();
 
     expect(registry.get(record.id)).toEqual({
       ...record,
       status: 'read-only',
-      schemaVersion: 2,
+      schemaVersion: V + 1,
       reason: expect.stringMatching(
-        /newer Lantern \(library schema 2; this one knows 1\).*read-only/,
+        new RegExp(
+          `newer Lantern \\(library schema ${String(V + 1)}; this one knows ${String(V)}\\).*read-only`,
+        ),
       ),
     });
     expect(migrations.get(record.id)).toBeNull();
-    expect(userVersionOf(paths.db)).toBe(2);
+    expect(userVersionOf(paths.db)).toBe(V + 1);
     expect(await readFile(paths.manifest, 'utf8')).toBe(manifestText);
     expect(existsSync(paths.backups)).toBe(false);
   });
 
   it('is unavailable when it needs a newer reader', async () => {
-    const { record, paths } = await aheadOf(3, '2');
+    const { record, paths } = await aheadOf(V + 2, String(V + 1));
     const { registry } = await open();
     expect(registry.get(record.id)).toMatchObject({
       status: 'unavailable',
       schemaVersion: null,
-      reason: expect.stringContaining('knows schema 2 or later'),
+      reason: expect.stringContaining(`knows schema ${String(V + 1)} or later`),
     });
-    expect(userVersionOf(paths.db)).toBe(3);
+    expect(userVersionOf(paths.db)).toBe(V + 2);
   });
 
   it('falls back to library.json’s min_reader when the database has none, if it describes that version', async () => {
-    const { record } = await aheadOf(2, null);
+    const { record } = await aheadOf(V + 1, null);
     const { registry } = await open();
     expect(registry.get(record.id)?.status).toBe('read-only');
   });
 
   it('is unavailable when no min_reader can be found for its version', async () => {
-    const { record, paths } = await aheadOf(2, null);
-    await writeFile(paths.manifest, JSON.stringify({ id: record.id, schema: 1, min_reader: 1 }));
+    const { record, paths } = await aheadOf(V + 1, null);
+    await writeFile(paths.manifest, JSON.stringify({ id: record.id, schema: V, min_reader: 1 }));
     const { registry } = await open();
     expect(registry.get(record.id)).toMatchObject({
       status: 'unavailable',
@@ -436,20 +441,22 @@ describe('a library with pending steps', () => {
     const { registry, migrations } = await open({ steps: [...LIBRARY_STEPS, breaking] });
 
     const migration = migrations.get(record.id);
-    expect(migration?.from).toBe(1);
-    expect(migration?.to).toBe(2);
-    expect(migration?.snapshot).toMatch(/[/\\]backups[/\\]library\.v1\.[0-9A-Z]{26}\.db$/);
-    expect(userVersionOf(migration?.snapshot ?? '')).toBe(1);
+    expect(migration?.from).toBe(V);
+    expect(migration?.to).toBe(V + 1);
+    expect(migration?.snapshot).toMatch(
+      new RegExp(`[/\\\\]backups[/\\\\]library\\.v${String(V)}\\.[0-9A-Z]{26}\\.db$`),
+    );
+    expect(userVersionOf(migration?.snapshot ?? '')).toBe(V);
 
-    expect(registry.get(record.id)).toMatchObject({ status: 'ok', schemaVersion: 2 });
-    expect(await manifestOf(paths.manifest)).toMatchObject({ schema: 2, min_reader: 2 });
+    expect(registry.get(record.id)).toMatchObject({ status: 'ok', schemaVersion: V + 1 });
+    expect(await manifestOf(paths.manifest)).toMatchObject({ schema: V + 1, min_reader: V + 1 });
     expect(
       withDatabase(
         paths.db,
         (db) => db.prepare("select value from meta where key = 'min_reader'").get()?.['value'],
         true,
       ),
-    ).toBe('2');
+    ).toBe(String(V + 1));
   });
 
   it('is not migrated without a snapshot, and says why without naming paths', async () => {
@@ -461,9 +468,9 @@ describe('a library with pending steps', () => {
     const reason = registry.get(record.id)?.reason ?? '';
     expect(registry.get(record.id)?.status).toBe('unavailable');
     expect(reason).toBe(
-      'There is not enough free space to snapshot it before migrating, so it was left at schema 1.',
+      `There is not enough free space to snapshot it before migrating, so it was left at schema ${String(V)}.`,
     );
-    expect(userVersionOf(paths.db)).toBe(1);
+    expect(userVersionOf(paths.db)).toBe(V);
   });
 
   it('is unavailable when a step fails, left at its last whole version with the snapshot kept', async () => {
@@ -473,10 +480,68 @@ describe('a library with pending steps', () => {
 
     expect(registry.get(record.id)).toMatchObject({
       status: 'unavailable',
-      reason: expect.stringMatching(/from schema 1 to 2 failed.*backups/),
+      reason: expect.stringMatching(
+        new RegExp(`from schema ${String(V)} to ${String(V + 1)} failed.*backups`),
+      ),
     });
-    expect(userVersionOf(paths.db)).toBe(1);
-    expect(await manifestOf(paths.manifest)).toMatchObject({ schema: 1 });
+    expect(userVersionOf(paths.db)).toBe(V);
+    expect(await manifestOf(paths.manifest)).toMatchObject({ schema: V });
     expect(await readdir(paths.backups)).toHaveLength(1);
+  });
+});
+
+describe('creating and renaming libraries', () => {
+  it('creates a library that is usable at once, and lists it', async () => {
+    const { registry } = await open();
+    const created = await registry.create('Sketches');
+    expect(created).toMatchObject({ name: 'Sketches', status: 'ok' });
+    expect(created.id).toMatch(new RegExp(LIBRARY_ID_PATTERN));
+    expect(registry.list().map((record) => record.name)).toEqual(['Library', 'Sketches']);
+    expect(registry.library(created.id)?.writable).toBe(true);
+    expect(registry.jobs(created.id)?.libraryId).toBe(created.id);
+    const paths = libraryPaths(dataDir, created.path);
+    expect(await manifestOf(paths.manifest)).toMatchObject({ id: created.id, name: 'Sketches' });
+  });
+
+  it('refuses a name another library has, ignoring case', async () => {
+    const { registry } = await open();
+    await expect(registry.create('library')).rejects.toThrow(LibraryNameTakenError);
+    await registry.create('Two');
+    const [first] = registry.list();
+    await expect(registry.rename(first!.id, 'TWO')).rejects.toThrow(LibraryNameTakenError);
+  });
+
+  it('lets two creates race for one name and gives it to one of them', async () => {
+    const { registry } = await open();
+    const results = await Promise.allSettled([registry.create('Same'), registry.create('Same')]);
+    expect(results.map((result) => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(registry.list()).toHaveLength(2);
+  });
+
+  it('renames in the registry and in library.json, keeping its other keys', async () => {
+    const { registry } = await open();
+    const [record] = registry.list();
+    const paths = libraryPaths(dataDir, record!.path);
+    const manifest = (await manifestOf(paths.manifest)) as Record<string, unknown>;
+    await writeFile(paths.manifest, JSON.stringify({ ...manifest, extra: 'kept' }));
+
+    expect(await registry.rename(record!.id, 'Renamed')).toMatchObject({ name: 'Renamed' });
+    // Its own name in another case is not a clash.
+    expect(await registry.rename(record!.id, 'RENAMED')).toMatchObject({ name: 'RENAMED' });
+    expect(await manifestOf(paths.manifest)).toMatchObject({ name: 'RENAMED', extra: 'kept' });
+    expect(
+      install.db.prepare('select name from libraries where id = ?').get(record!.id)?.['name'],
+    ).toBe('RENAMED');
+    expect(await registry.rename(newId('lib'), 'Nobody')).toBeUndefined();
+  });
+
+  it('renames an unavailable library in the registry only', async () => {
+    const { record, paths } = await defaultLibrary();
+    await rm(paths.db);
+    const { registry } = await open();
+    expect(registry.get(record.id)?.status).toBe('unavailable');
+    expect(registry.library(record.id)).toBeUndefined();
+    expect(await registry.rename(record.id, 'Gone')).toMatchObject({ name: 'Gone' });
+    expect(existsSync(paths.db)).toBe(false);
   });
 });

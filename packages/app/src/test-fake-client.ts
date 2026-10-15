@@ -97,6 +97,56 @@ export function fakeClient(initial: Partial<FakeDaemonState> = {}): {
         ),
       ),
     ),
+    createLibrary: vi.fn<LanternClient['createLibrary']>((name) =>
+      gate().then(() => {
+        const library = librarySummary(
+          `lib_01JZ${String(state.libraries.length).padStart(22, '0')}`,
+          name,
+        );
+        state.libraries.push(library);
+        return { ...library };
+      }),
+    ),
+    renameLibrary: vi.fn<LanternClient['renameLibrary']>((lib, name) =>
+      gate().then(() => {
+        const library = state.libraries.find((candidate) => candidate.id === lib);
+        if (library === undefined) {
+          return Promise.reject(new LanternApiError(404, 'not-found', 'No such library.'));
+        }
+        library.name = name;
+        return { ...library };
+      }),
+    ),
+    // The fake daemon holds no assets: uploads are refused, queries are empty.
+    uploadAsset: vi.fn<LanternClient['uploadAsset']>(() =>
+      gate().then(() =>
+        Promise.reject(
+          new LanternApiError(422, 'invalid', 'The body is not valid.', [
+            { path: '/file', message: 'is not an image Lantern can read' },
+          ]),
+        ),
+      ),
+    ),
+    listAssets: vi.fn<LanternClient['listAssets']>(() =>
+      gate().then(() => ({ assets: [], next_cursor: null })),
+    ),
+    assetProvenance: vi.fn<LanternClient['assetProvenance']>(() => noAsset()),
+    assetLineage: vi.fn<LanternClient['assetLineage']>(() => noAsset()),
+    rateAsset: vi.fn<LanternClient['rateAsset']>(() => noAsset()),
+    deleteAsset: vi.fn<LanternClient['deleteAsset']>(() => noAsset()),
+    assetUrl: vi.fn<LanternClient['assetUrl']>(
+      (lib, asset) => `/api/v1/libraries/${lib}/assets/${asset}`,
+    ),
+    thumbnailUrl: vi.fn<LanternClient['thumbnailUrl']>(
+      (lib, asset) => `/api/v1/libraries/${lib}/assets/${asset}/thumb`,
+    ),
   };
+
+  function noAsset(): Promise<never> {
+    return gate().then(() =>
+      Promise.reject(new LanternApiError(404, 'not-found', 'No such asset.')),
+    );
+  }
+
   return { client, state };
 }

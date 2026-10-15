@@ -12,8 +12,8 @@
 // Environment variables override this file (and the startup log says which did):
 // LANTERN_HOST, LANTERN_PORT, LANTERN_DATA_DIR, LANTERN_APP_ROOT,
 // LANTERN_AUTH_MODE, LANTERN_TRUST_NETWORK (1 or true), LANTERN_COOKIE_SECURE,
-// LANTERN_ALLOWED_HOSTS and LANTERN_ALLOWED_ORIGINS (comma-separated) and
-// LANTERN_LOG_LEVEL. An empty variable counts as unset.
+// LANTERN_ALLOWED_HOSTS and LANTERN_ALLOWED_ORIGINS (comma-separated),
+// LANTERN_LOG_LEVEL and LANTERN_MAX_UPLOAD_MB. An empty variable counts as unset.
 //
 // LANTERN_PASSWORD (for containers) sets the password at start instead of
 // `lantern set-password`: it is checked against the stored password and
@@ -66,5 +66,11 @@
   "log": {
     // fatal, error, warn, info, debug, trace or silent. Logs are JSON lines.
     "level": "info"
+  },
+
+  "limits": {
+    // The largest image an upload may send, in megabytes (1 to 1024). Images
+    // are also refused above 8192 × 8192 pixels, whatever their file size.
+    "maxUploadMb": 50
   }
 }

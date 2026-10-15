@@ -7,13 +7,13 @@
  * and the OpenAPI spec documents (rule 1).
  */
 
-import { type TNull, type TSchema, Type } from '@sinclair/typebox';
+import { type TNull, type TSchema, type TUnsafe, Type } from '@sinclair/typebox';
 
 /** Every v1 API route lives under this prefix; `/healthz` is the exception. */
 export const API_V1_PREFIX = '/api/v1';
 
-/** Methods Phase 1 uses. */
-export type RouteMethod = 'GET' | 'POST' | 'DELETE';
+/** The methods the API uses. */
+export type RouteMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 /**
  * A Fastify route schema plus the OpenAPI annotations @fastify/swagger reads.
@@ -26,6 +26,12 @@ export interface RouteSchema {
   tags?: readonly string[];
   /** Keeps the route out of the generated spec. */
   hide?: boolean;
+  /**
+   * Request media types other than JSON, for OpenAPI. A route that takes
+   * `multipart/form-data` has no `body` schema: the upload is read as a
+   * stream, not parsed into a body.
+   */
+  consumes?: readonly string[];
   body?: TSchema;
   params?: TSchema;
   querystring?: TSchema;
@@ -51,4 +57,22 @@ export interface RouteContract<S extends RouteSchema = RouteSchema> {
 /** A response with no body (204). @fastify/swagger documents `type: null` as no content. */
 export function noContent(description: string): TNull {
   return Type.Null({ description });
+}
+
+/**
+ * A response whose body is bytes rather than JSON (an image), under each of
+ * `mediaTypes`. Written as Fastify and @fastify/swagger both read a
+ * per-media-type response (`content`), so only this status is documented as
+ * an image and the error answers beside it stay JSON. Fastify never
+ * serialises a Buffer, so the schema is documentation only.
+ */
+export function binaryResponse(
+  description: string,
+  mediaTypes: readonly string[],
+): TUnsafe<Uint8Array> {
+  const schema = { type: 'string', contentEncoding: 'binary', description };
+  return Type.Unsafe<Uint8Array>({
+    description,
+    content: Object.fromEntries(mediaTypes.map((mediaType) => [mediaType, { schema }])),
+  });
 }

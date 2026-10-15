@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loggerOptions } from '../../logging.js';
 import type { InstallStore } from '../../store/types.js';
-import { captureLog, tempRoot, testConfig } from '../../test-app.js';
+import { captureLog, fakeLibraries, tempRoot, testConfig } from '../../test-app.js';
 import { UsageError, type CommandContext, type SignalSource } from '../args.js';
 import { createServeCommand, logStartup, type ServeOptions, type ServeStore } from './serve.js';
 
@@ -68,8 +68,7 @@ function recordingStore(events: string[], overrides: Partial<ServeStore> = {}): 
     openLibraryRegistry: () => {
       events.push('open libraries');
       return Promise.resolve({
-        list: () => [],
-        get: () => undefined,
+        ...fakeLibraries(),
         close: () => events.push('close libraries'),
       });
     },
@@ -401,8 +400,7 @@ describe('lantern serve', () => {
           await new Promise((resolve) => setTimeout(resolve, 150));
           events.push('libraries opened');
           return {
-            list: () => [],
-            get: () => undefined,
+            ...fakeLibraries(),
             close: () => events.push('close libraries'),
           };
         },

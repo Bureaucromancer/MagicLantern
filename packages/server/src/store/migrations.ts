@@ -50,7 +50,7 @@ create table lease (
 /** The install schema this build writes. A newer `lantern.db` refuses to start (A20). */
 export const INSTALL_SCHEMA_VERSION = INSTALL_STEPS.length;
 
-/** `library.db`: one library's jobs, assets and provenance from later phases. */
+/** `library.db`: one library's jobs, assets and provenance. */
 export const LIBRARY_STEPS: readonly MigrationStep[] = [
   {
     sql: `
@@ -61,6 +61,151 @@ create table meta (
   key    text primary key,
   value  text not null
 ) strict;
+`,
+  },
+  {
+    sql: `
+-- Jobs (plan, "Data model"). Kept narrow for the queue and history; the large
+-- JSON lives in job_payloads. The engine (Phase 4) owns every state change;
+-- the checks here hold the shapes it may write.
+create table jobs (
+  id               text primary key,
+  parent_id        text references jobs (id) on delete set null,
+  client_id        text,
+  end_user         text,
+  collection       text,
+  idempotency_key  text,
+  priority         integer not null default 0,
+  queue_rank       text,
+  state            text not null check (state in
+                     ('queued', 'submitting', 'dispatched', 'running', 'cancel_requested', 'finished')),
+  blocked_reason   text check (blocked_reason is null or json_valid(blocked_reason)),
+  outcome          text check (outcome in ('done', 'failed', 'refused', 'cancelled')),
+  outcome_reason   text,
+  model_id         text not null,
+  route_id         text,
+  route_snapshot   text check (route_snapshot is null or json_valid(route_snapshot)),
+  backend_handle   text check (backend_handle is null or json_valid(backend_handle)),
+  progress         text check (progress is null or json_valid(progress)),
+  created_at       real not null,
+  updated_at       real not null,
+  started_at       real,
+  finished_at      real,
+  -- An outcome exactly when finished (A16).
+  check ((state = 'finished') = (outcome is not null))
+) strict;
+
+-- History, newest first, with a stable cursor.
+create index jobs_created on jobs (created_at, id);
+-- The scheduler's startup load: only live jobs.
+create index jobs_live on jobs (state) where state <> 'finished';
+-- One job per client and key. client_id is null until client tokens (0.2),
+-- and nulls are distinct in a unique index, hence the coalesce.
+create unique index jobs_idempotency on jobs (coalesce(client_id, ''), idempotency_key)
+  where idempotency_key is not null;
+create index jobs_parent on jobs (parent_id) where parent_id is not null;
+
+-- The stored payloads (plan, "Provenance"). canonical is written at submit;
+-- the rest as the job gets that far. wire keeps $asset placeholders (A15).
+create table job_payloads (
+  job_id            text primary key references jobs (id) on delete cascade,
+  canonical         text not null check (json_valid(canonical)),
+  effective         text check (effective is null or json_valid(effective)),
+  field_report      text check (field_report is null or json_valid(field_report)),
+  wire              text check (wire is null or json_valid(wire)),
+  backend_response  text check (backend_response is null or json_valid(backend_response))
+) strict;
+
+-- The content-addressed assets: id is the SHA-256 of the bytes as stored and
+-- served. A deleted asset keeps its row, so provenance and pixel_hash outlive
+-- the bytes (A23). derived_from links a derived asset (a crop, A7) to its source.
+create table assets (
+  id              text primary key check (length(id) = 64 and id not glob '*[^0-9a-f]*'),
+  media_type      text not null,
+  bytes           integer not null check (bytes >= 0),
+  width           integer check (width > 0),
+  height          integer check (height > 0),
+  frames          integer check (frames > 0),
+  duration_ms     integer check (duration_ms >= 0),
+  pixel_hash      text,
+  pixel_hash_alg  text,
+  origin          text not null check (origin in ('generated', 'uploaded', 'derived', 'imported')),
+  bytes_state     text not null default 'present' check (bytes_state in ('present', 'trashed', 'evicted')),
+  retention       text not null default 'keep' check (retention in ('keep', 'client_copy')),
+  rating          integer check (rating between 1 and 5),
+  derived_from    text references assets (id),
+  derivation      text check (derivation is null or json_valid(derivation)),
+  created_at      real not null,
+  bytes_changed_at real,
+  check ((pixel_hash is null) = (pixel_hash_alg is null)),
+  check ((derived_from is null) = (derivation is null))
+) strict;
+
+create index assets_created on assets (created_at, id);
+create index assets_derived on assets (derived_from) where derived_from is not null;
+
+create table job_inputs (
+  job_id          text not null references jobs (id) on delete cascade,
+  position        integer not null check (position >= 0),
+  asset_id        text not null references assets (id),
+  role            text not null,
+  weight          real,
+  region          text check (region is null or json_valid(region)),
+  crop            text check (crop is null or json_valid(crop)),
+  -- The library an input was copied from (A22); null when it was this one's.
+  source_library  text,
+  primary key (job_id, position)
+) strict;
+
+create index job_inputs_asset on job_inputs (asset_id);
+
+create table job_outputs (
+  job_id        text not null references jobs (id) on delete cascade,
+  output_index  integer not null check (output_index >= 0),
+  asset_id      text not null references assets (id),
+  -- Up to 2^53 - 1 (A1), which an integer column holds exactly.
+  seed          integer check (seed >= 0),
+  primary key (job_id, output_index)
+) strict;
+
+create index job_outputs_asset on job_outputs (asset_id);
+
+-- Prompt search. The FTS index is external-content over job_prompts, which has
+-- an integer key of its own: an implicit rowid may be renumbered by VACUUM,
+-- and FTS rows are found by rowid. The triggers keep the index in the
+-- transaction that writes the job.
+create table job_prompts (
+  id        integer primary key,
+  job_id    text not null unique references jobs (id) on delete cascade,
+  positive  text not null,
+  negative  text not null default ''
+) strict;
+
+-- tokenchars '_' keeps long_hair one token.
+create virtual table prompts_fts using fts5 (
+  positive,
+  negative,
+  content = 'job_prompts',
+  content_rowid = 'id',
+  tokenize = "unicode61 tokenchars '_'"
+);
+
+create trigger job_prompts_ai after insert on job_prompts begin
+  insert into prompts_fts (rowid, positive, negative)
+    values (new.id, new.positive, new.negative);
+end;
+
+create trigger job_prompts_ad after delete on job_prompts begin
+  insert into prompts_fts (prompts_fts, rowid, positive, negative)
+    values ('delete', old.id, old.positive, old.negative);
+end;
+
+create trigger job_prompts_au after update on job_prompts begin
+  insert into prompts_fts (prompts_fts, rowid, positive, negative)
+    values ('delete', old.id, old.positive, old.negative);
+  insert into prompts_fts (rowid, positive, negative)
+    values (new.id, new.positive, new.negative);
+end;
 `,
   },
 ];

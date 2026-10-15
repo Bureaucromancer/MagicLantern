@@ -10,7 +10,7 @@
  * environment is `LANTERN_HOST`, `LANTERN_PORT`, `LANTERN_DATA_DIR`,
  * `LANTERN_APP_ROOT`, `LANTERN_AUTH_MODE`, `LANTERN_TRUST_NETWORK` (1/true),
  * `LANTERN_COOKIE_SECURE`, `LANTERN_ALLOWED_HOSTS` and `LANTERN_ALLOWED_ORIGINS`
- * (comma lists) and `LANTERN_LOG_LEVEL`. An empty value is unset; integers parse
+ * (comma lists), `LANTERN_LOG_LEVEL` and `LANTERN_MAX_UPLOAD_MB`. An empty value is unset; integers parse
  * only on /^-?\d+$/. `--data` outranks both layers for the data directory.
  *
  * Each layer is validated on its own over the defaults, so an error names
@@ -64,6 +64,7 @@ export const CONFIG_ENVIRONMENT = {
   LANTERN_ALLOWED_HOSTS: { key: 'allowedHosts', kind: 'list' },
   LANTERN_ALLOWED_ORIGINS: { key: 'allowedOrigins', kind: 'list' },
   LANTERN_LOG_LEVEL: { key: 'log.level', kind: 'string' },
+  LANTERN_MAX_UPLOAD_MB: { key: 'limits.maxUploadMb', kind: 'integer' },
 } as const satisfies Record<string, { key: string; kind: ValueKind }>;
 
 export type ConfigVariable = keyof typeof CONFIG_ENVIRONMENT;

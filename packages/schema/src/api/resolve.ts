@@ -22,7 +22,7 @@ import {
   SkippedRoute,
 } from '../resolution/resolution.js';
 import { errorResponse, ForbiddenHostOrOrigin } from './errors.js';
-import { LibraryId } from './libraries.js';
+import { LibraryParams } from './libraries.js';
 import { API_V1_PREFIX, type RouteContract } from './route.js';
 
 /** A model or route id: printable, no spaces or slashes. */
@@ -37,12 +37,6 @@ export type ModelId = Static<typeof ModelId>;
 
 export const RouteId = id('A route id: one backend serving one model.');
 export type RouteId = Static<typeof RouteId>;
-
-export const LibraryParams = Type.Object(
-  { lib: LibraryId },
-  { additionalProperties: false, description: 'The library.' },
-);
-export type LibraryParams = Static<typeof LibraryParams>;
 
 export const ResolveBody = Type.Object(
   {

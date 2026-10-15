@@ -19,6 +19,9 @@
  *     library.json        { id, name, schema, min_reader, created_at }
  *     library.db
  *     backups/            snapshots of library.db
+ *     assets/ab/cd/<sha256>.<ext>   content-addressed assets
+ *     incoming/<job id>/  results spooled before ingest (A17)
+ *     cache/thumbs/ab/<sha256>.webp rebuildable thumbnails
  * ```
  */
 
@@ -112,6 +115,10 @@ export const DATA_LAYOUT = {
   libraries: 'libraries',
   libraryManifest: 'library.json',
   libraryDb: 'library.db',
+  libraryAssets: 'assets',
+  libraryIncoming: 'incoming',
+  libraryCache: 'cache',
+  libraryThumbs: 'cache/thumbs',
 } as const;
 
 export interface DataPaths {
@@ -156,6 +163,10 @@ export interface LibraryPaths {
   readonly manifest: string;
   readonly db: string;
   readonly backups: string;
+  readonly assets: string;
+  readonly incoming: string;
+  readonly cache: string;
+  readonly thumbs: string;
 }
 
 /**
@@ -182,10 +193,24 @@ export function libraryPaths(dataDir: string, relativePath: string): LibraryPath
     throw new TypeError(`Library path escapes the data directory: "${relativePath}".`);
   }
 
+  return libraryPathsAt(root);
+}
+
+/**
+ * The layout of a library folder at an absolute path that is not a
+ * registered library's, such as a backup being written. Registered folders
+ * go through {@link libraryPaths}, which checks the stored path first.
+ */
+export function libraryPathsAt(root: string): LibraryPaths {
+  if (!isAbsolute(root)) throw new TypeError(`A library folder must be absolute; got "${root}".`);
   return {
     root,
     manifest: join(root, DATA_LAYOUT.libraryManifest),
     db: join(root, DATA_LAYOUT.libraryDb),
     backups: join(root, DATA_LAYOUT.backups),
+    assets: join(root, DATA_LAYOUT.libraryAssets),
+    incoming: join(root, DATA_LAYOUT.libraryIncoming),
+    cache: join(root, DATA_LAYOUT.libraryCache),
+    thumbs: join(root, ...DATA_LAYOUT.libraryThumbs.split('/')),
   };
 }

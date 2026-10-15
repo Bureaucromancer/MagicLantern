@@ -126,3 +126,35 @@ describe('parseCliArgs', () => {
     expect(refusal(argv)).toBe(message);
   });
 });
+
+describe('lantern library backup', () => {
+  it('takes --out, and --library for one library', () => {
+    expect(parseCliArgs(['library', 'backup', '--out', '/backups'])).toEqual({
+      command: 'library-backup',
+      clear: false,
+      out: '/backups',
+    });
+    expect(
+      parseCliArgs(['--data', '/d', 'library', 'backup', '--out=b', '--library', 'lib_x']),
+    ).toMatchObject({ command: 'library-backup', dataDir: '/d', out: 'b', library: 'lib_x' });
+  });
+
+  it.each([
+    [['library'], '`lantern library` needs a command: backup.'],
+    [['library', 'restore'], 'Unknown library command "restore". Run `lantern --help` for usage.'],
+    [['library', 'backup'], '`lantern library backup` needs --out <dir>: where the backups go.'],
+    [['library', 'backup', '--out', ''], '--out needs a value.'],
+    [
+      ['library', 'backup', 'extra', '--out', 'b'],
+      'Too many arguments. Run `lantern --help` for usage.',
+    ],
+    [['serve', '--out', 'b'], '--out only goes with `lantern library backup`.'],
+    [['migrate', '--library', 'lib_x'], '--library only goes with `lantern library backup`.'],
+    [
+      ['--data', 'library'],
+      '--data needs a value: "library" is a command. For a directory by that name, write ./library.',
+    ],
+  ])('refuses %j', (argv, message) => {
+    expect(refusal(argv)).toBe(message);
+  });
+});

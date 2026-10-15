@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { readLease } from './lease.js';
 import { migrateAll } from './migrate.js';
-import { LIBRARY_STEPS } from './migrations.js';
+import { LIBRARY_SCHEMA_VERSION, LIBRARY_STEPS } from './migrations.js';
 import { dataPaths } from './paths.js';
 import { vacuumInto, type SnapshotOutcome, type SnapshotTask } from './snapshot-worker.js';
 import { collectingLog, removeDir, tempDir, testBoot, withDatabase } from './test-store.js';
@@ -31,8 +31,8 @@ describe('migrateAll', () => {
       expect.objectContaining({
         name: 'Library',
         status: 'ok',
-        schemaVersion: 1,
-        migration: { from: 0, to: 1, snapshot: null },
+        schemaVersion: LIBRARY_SCHEMA_VERSION,
+        migration: { from: 0, to: LIBRARY_SCHEMA_VERSION, snapshot: null },
       }),
     ]);
     // A clean close: no lease row for the next start to take over.
@@ -44,7 +44,7 @@ describe('migrateAll', () => {
     const report = await migrateAll(dataDir, { boot: testBoot(), log: collectingLog() });
     expect(report.install).toEqual({ from: 1, to: 1, snapshot: null });
     expect(report.libraries.map((library) => library.migration)).toEqual([
-      { from: 1, to: 1, snapshot: null },
+      { from: LIBRARY_SCHEMA_VERSION, to: LIBRARY_SCHEMA_VERSION, snapshot: null },
     ]);
   });
 
@@ -74,7 +74,9 @@ describe('migrateAll', () => {
       },
     );
 
-    expect(report.libraries.map((library) => library.migration?.to)).toEqual([2]);
+    expect(report.libraries.map((library) => library.migration?.to)).toEqual([
+      LIBRARY_SCHEMA_VERSION + 1,
+    ]);
     expect(seen).toHaveLength(2);
     expect(seen[1]).toBeGreaterThan(seen[0] ?? Number.POSITIVE_INFINITY);
     expect(withDatabase(installDb, (db) => readLease(db), true)).toBeNull();

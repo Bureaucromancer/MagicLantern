@@ -19,6 +19,31 @@ export { DataDirError, ensureWritableDataDir } from './files.js';
 export { InstallSchemaTooNewError, openInstallStore } from './install.js';
 export { LEASE_HEARTBEAT_MS } from './lease.js';
 export { openLibraryRegistry } from './libraries.js';
+export {
+  AssetUnavailableError,
+  LibraryReadOnlyError,
+  type AssetBytes,
+  type AssetFilter,
+  type AssetPageRecord,
+  type AssetRecord,
+  type FinishedJob,
+  type FinishedJobInput,
+  type FinishedJobOutput,
+  type ImportedJob,
+  type JobOutcome,
+  type JobRecord,
+  type JobState,
+  type JobStore,
+  type Library,
+  type LineageRecord,
+  type NewJob,
+  type OutputOf,
+  type ProvenanceRecord,
+  type StoredAsset,
+  type UsageRecord,
+} from './library-types.js';
+export { IngestError, LocalLibrary } from './local-library.js';
+export { ImageRefusedError, MAX_INPUT_PIXELS, THUMBNAIL_MEDIA_TYPE } from './media.js';
 export { acquireInstanceLock, InstanceLockHeldError } from './lock.js';
 export { migrateAll } from './migrate.js';
 export {
@@ -39,6 +64,7 @@ export {
   type LibraryPaths,
   type PlatformContext,
 } from './paths.js';
+export { LibraryNameTakenError } from './types.js';
 export type {
   BootIdentity,
   DatabaseMigration,

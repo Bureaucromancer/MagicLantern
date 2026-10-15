@@ -100,6 +100,18 @@ export const ConfigSchema = Type.Object({
       'Extra Origins to accept (scheme://host[:port]), e.g. http://localhost:5173 for the Vite dev server.',
   }),
   log: Type.Object({ level: logLevel({ default: 'info' }) }, { default: {} }),
+  limits: Type.Object(
+    {
+      maxUploadMb: Type.Integer({
+        minimum: 1,
+        maximum: 1024,
+        default: 50,
+        description:
+          'The largest image an upload may send, in megabytes (MiB). Larger ones are refused with 413.',
+      }),
+    },
+    { default: {} },
+  ),
 });
 
 /** A whole config document as written in lantern.json, after defaults. */
@@ -118,6 +130,7 @@ export const DEFAULT_CONFIG: LanternConfig = deepFreeze({
   allowedHosts: [],
   allowedOrigins: [],
   log: { level: 'info' },
+  limits: { maxUploadMb: 50 },
 });
 
 /** How the config was arrived at, for the startup log lines. */

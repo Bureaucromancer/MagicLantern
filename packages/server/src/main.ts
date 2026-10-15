@@ -14,17 +14,20 @@
 import { homedir } from 'node:os';
 
 import { parseCliArgs, USAGE, type Command, type CommandContext } from './cli/args.js';
+import { runLibraryBackup } from './cli/commands/library-backup.js';
 import { runMigrate } from './cli/commands/migrate.js';
 import { runServe } from './cli/commands/serve.js';
 import { runSetPassword } from './cli/commands/set-password.js';
 import { isUsageError } from './cli/startup.js';
 import { readServerVersion } from './cli/version.js';
 
-const COMMANDS: Readonly<Record<'serve' | 'migrate' | 'set-password', Command>> = {
-  serve: runServe,
-  migrate: runMigrate,
-  'set-password': runSetPassword,
-};
+const COMMANDS: Readonly<Record<'serve' | 'migrate' | 'set-password' | 'library-backup', Command>> =
+  {
+    serve: runServe,
+    migrate: runMigrate,
+    'set-password': runSetPassword,
+    'library-backup': runLibraryBackup,
+  };
 
 async function main(): Promise<number> {
   const args = parseCliArgs(process.argv.slice(2));

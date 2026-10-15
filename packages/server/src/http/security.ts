@@ -21,7 +21,11 @@
  * - **JSON only**: POST/PUT/PATCH/DELETE with a body must be
  *   `application/json` (415); bodiless requests pass. A text/plain POST is a
  *   CORS "simple request" that no preflight stops, so this is what keeps a
- *   cross-site form from reaching a handler.
+ *   cross-site form from reaching a handler. The one exception is a route
+ *   marked `config: { multipart: true }` (uploads), which takes
+ *   `multipart/form-data` instead. That is a simple request too, so for it
+ *   the Origin check above is the defence: browsers send Origin on every
+ *   cross-site POST, and a foreign one is refused before the body is read.
  *
  * Also the loopback guard's predicates, which the serve command applies
  * before anything listens.
@@ -174,11 +178,25 @@ export function hasBody(headers: FastifyRequest['headers']): boolean {
   return headers['transfer-encoding'] !== undefined || (length !== undefined && length !== '0');
 }
 
+function mediaTypeOf(header: string | undefined): string | null {
+  if (header === undefined) return null;
+  const [mediaType = ''] = header.split(';');
+  return mediaType.trim().toLowerCase();
+}
+
 /** `application/json`, with or without parameters; nothing else (no `+json` suffixes). */
 export function isJsonContentType(header: string | undefined): boolean {
-  if (header === undefined) return false;
-  const [mediaType = ''] = header.split(';');
-  return mediaType.trim().toLowerCase() === 'application/json';
+  return mediaTypeOf(header) === 'application/json';
+}
+
+/** `multipart/form-data`, with its boundary parameter. */
+export function isMultipartContentType(header: string | undefined): boolean {
+  return mediaTypeOf(header) === 'multipart/form-data';
+}
+
+/** Whether the route the request reached takes uploads (`config: { multipart: true }`). */
+function takesMultipart(request: FastifyRequest): boolean {
+  return (request.routeOptions.config as { multipart?: boolean } | undefined)?.multipart === true;
 }
 
 /**
@@ -280,17 +298,25 @@ export function createSecurityGuard(options: SecurityOptions): SecurityGuard {
       );
     }
 
-    if (
-      !SAFE_METHODS.has(request.method) &&
-      hasBody(request.headers) &&
-      !isJsonContentType(request.headers['content-type'])
-    ) {
-      return sendError(
-        reply,
-        415,
-        ErrorCodes.unsupportedMediaType,
-        'The body must be application/json.',
-      );
+    if (!SAFE_METHODS.has(request.method) && hasBody(request.headers)) {
+      const contentType = request.headers['content-type'];
+      if (takesMultipart(request)) {
+        if (!isMultipartContentType(contentType)) {
+          return sendError(
+            reply,
+            415,
+            ErrorCodes.unsupportedMediaType,
+            'The body must be multipart/form-data.',
+          );
+        }
+      } else if (!isJsonContentType(contentType)) {
+        return sendError(
+          reply,
+          415,
+          ErrorCodes.unsupportedMediaType,
+          'The body must be application/json.',
+        );
+      }
     }
     return undefined;
   };

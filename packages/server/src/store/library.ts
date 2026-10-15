@@ -483,6 +483,29 @@ async function syncManifest(
   });
 }
 
+/**
+ * Writes a new name into `library.json`, keeping every other key. A failure
+ * is logged and not thrown: the registry holds the name, and the manifest is
+ * a copy that the next open brings in line.
+ */
+export async function renameManifest(
+  paths: LibraryPaths,
+  id: string,
+  name: string,
+  log: StoreLog,
+): Promise<void> {
+  const existing = await readManifest(paths.manifest);
+  if (existing?.['id'] !== id) {
+    // Missing or foreign: the next open writes a whole one.
+    return;
+  }
+  try {
+    await writeJsonAtomic(paths.manifest, { ...existing, name });
+  } catch (error) {
+    log.warn('Could not write the new name into library.json.', { id, ...errorFields(error) });
+  }
+}
+
 function nonNegativeInteger(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }

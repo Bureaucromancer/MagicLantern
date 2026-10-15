@@ -49,6 +49,16 @@ function columns(
     }));
 }
 
+/** Ordinary tables: not FTS5's virtual table or the shadow tables behind it. */
+function ordinaryTables(db: DatabaseSync): string[] {
+  return db
+    .prepare(
+      "select name from pragma_table_list where schema = 'main' and type = 'table' and name not like 'sqlite_%' order by name",
+    )
+    .all()
+    .map((row) => String(row['name']));
+}
+
 function isStrict(db: DatabaseSync, table: string): boolean {
   const row = db.prepare('select strict from pragma_table_list where name = ?').get(table);
   return row?.['strict'] === 1;
@@ -68,7 +78,7 @@ describe.each([
 
   it('make only strict tables', () => {
     const db = storeAtVersion(steps, steps.length);
-    for (const table of tableNames(db)) expect(isStrict(db, table), table).toBe(true);
+    for (const table of ordinaryTables(db)) expect(isStrict(db, table), table).toBe(true);
   });
 });
 
@@ -112,13 +122,104 @@ describe('install schema version 1', () => {
 
 describe('library schema version 1', () => {
   it('has the meta table, readable by any build that knows version 1', () => {
-    expect(LIBRARY_SCHEMA_VERSION).toBe(1);
-    expect(LIBRARY_MIN_READER).toBe(1);
     const db = storeAtVersion(LIBRARY_STEPS, 1);
     expect(tableNames(db)).toEqual(['meta']);
     expect(columns(db, 'meta')).toEqual([
       { name: 'key', type: 'TEXT', notnull: 1, pk: 1 },
       { name: 'value', type: 'TEXT', notnull: 1, pk: 0 },
     ]);
+  });
+});
+
+describe('library schema version 2', () => {
+  const asset = (id: string, extra = '') =>
+    `insert into assets (id, media_type, bytes, origin, created_at${extra === '' ? '' : ', rating'})
+     values ('${id}', 'image/png', 10, 'uploaded', 1${extra === '' ? '' : `, ${extra}`})`;
+
+  it('adds jobs, payloads, assets, inputs, outputs and the prompt index, readable by version 1 builds', () => {
+    expect(LIBRARY_SCHEMA_VERSION).toBe(2);
+    expect(LIBRARY_MIN_READER).toBe(1);
+    const db = storeAtVersion(LIBRARY_STEPS, 2);
+    expect(ordinaryTables(db)).toEqual([
+      'assets',
+      'job_inputs',
+      'job_outputs',
+      'job_payloads',
+      'job_prompts',
+      'jobs',
+      'meta',
+    ]);
+    expect(tableNames(db)).toContain('prompts_fts');
+  });
+
+  it("keeps version 1's rows", () => {
+    const db = storeAtVersion(LIBRARY_STEPS, 1);
+    db.prepare("insert into meta (key, value) values ('min_reader', '1')").run();
+    runMigrations(db, LIBRARY_STEPS.slice(0, 2));
+    expect(db.prepare('select key, value from meta').all()).toEqual([
+      { key: 'min_reader', value: '1' },
+    ]);
+  });
+
+  it('holds an asset id to a SHA-256 in hex, and a rating to 1 to 5', () => {
+    const db = storeAtVersion(LIBRARY_STEPS, 2);
+    db.exec(asset('a'.repeat(64)));
+    expect(() => {
+      db.exec(asset('A'.repeat(64)));
+    }).toThrow(/CHECK/);
+    expect(() => {
+      db.exec(asset('a'.repeat(63)));
+    }).toThrow(/CHECK/);
+    expect(() => {
+      db.exec(asset('b'.repeat(64), '0'));
+    }).toThrow(/CHECK/);
+    expect(() => {
+      db.exec(asset('b'.repeat(64), '6'));
+    }).toThrow(/CHECK/);
+  });
+
+  it('gives a job an outcome exactly when it is finished', () => {
+    const db = storeAtVersion(LIBRARY_STEPS, 2);
+    const job = db.prepare(
+      'insert into jobs (id, state, outcome, model_id, created_at, updated_at) values (?, ?, ?, ?, 1, 1)',
+    );
+    job.run('j1', 'queued', null, 'm');
+    job.run('j2', 'finished', 'done', 'm');
+    expect(() => job.run('j3', 'finished', null, 'm')).toThrow(/CHECK/);
+    expect(() => job.run('j4', 'running', 'done', 'm')).toThrow(/CHECK/);
+    expect(() => job.run('j5', 'paused', null, 'm')).toThrow(/CHECK/);
+  });
+
+  it('takes one job per client and idempotency key, with no client counted as one client', () => {
+    const db = storeAtVersion(LIBRARY_STEPS, 2);
+    const job = db.prepare(
+      "insert into jobs (id, state, model_id, idempotency_key, client_id, created_at, updated_at) values (?, 'queued', 'm', ?, ?, 1, 1)",
+    );
+    job.run('j1', 'k', null);
+    expect(() => job.run('j2', 'k', null)).toThrow(/UNIQUE/);
+    job.run('j3', 'k', 'client_a');
+    job.run('j4', null, null);
+    job.run('j5', null, null);
+  });
+
+  it('keeps the prompt index in step with job_prompts', () => {
+    const db = storeAtVersion(LIBRARY_STEPS, 2);
+    db.exec(
+      "insert into jobs (id, state, model_id, created_at, updated_at) values ('j1', 'queued', 'm', 1, 1)",
+    );
+    db.exec("insert into job_prompts (job_id, positive) values ('j1', 'long_hair, red dress')");
+    const count = (match: string) =>
+      Number(
+        db.prepare('select count(*) as n from prompts_fts where prompts_fts match ?').get(match)?.[
+          'n'
+        ],
+      );
+    expect(count('long_hair')).toBe(1);
+    expect(count('long')).toBe(0);
+    db.exec("update job_prompts set positive = 'short hair' where job_id = 'j1'");
+    expect(count('long_hair')).toBe(0);
+    expect(count('short')).toBe(1);
+    db.exec("delete from jobs where id = 'j1'");
+    expect(count('short')).toBe(0);
   });
 });

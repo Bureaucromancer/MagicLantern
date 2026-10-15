@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
 import { DEFAULT_CONFIG } from '../config/schema.js';
 import type { AppServices } from '../services.js';
-import { testModelServices } from '../test-app.js';
+import { fakeLibraries, testModelServices } from '../test-app.js';
 import {
   generateOpenApiJson,
   OPENAPI_API_VERSION,
@@ -372,7 +372,7 @@ describe('GET /api/v1/openapi.json on the real app', () => {
         readSession: () => null,
         cookie: { name: 'lantern_session', secure: false, maxAgeSeconds: 60 },
       },
-      libraries: { list: () => [], get: () => undefined, close: () => undefined },
+      libraries: fakeLibraries(),
       ...testModelServices(),
     };
   }

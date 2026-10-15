@@ -59,6 +59,7 @@ commands run the same way:
 ```sh
 node packages/server/dist/main.js set-password   # turns on password sign-in (reads stdin)
 node packages/server/dist/main.js migrate        # migrates the databases without serving
+node packages/server/dist/main.js library backup --out ~/lantern-backups   # safe while serving
 node packages/server/dist/main.js --help
 ```
 
