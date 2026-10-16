@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Magic Lantern contributors
 
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import ts from 'typescript';
@@ -62,7 +62,13 @@ function unknownNamesInProbe(pkg: string): string[] {
   };
   delete options.tsBuildInfoFile;
 
-  const probePath = join(ROOT, 'packages', pkg, 'src', 'node-globals-probe.ts');
+  // With `/`, because that is how TypeScript names every file it hands the host,
+  // on Windows too. With `\` no callback below ever saw the probe's own name, so
+  // the compiler went to the disk for it, found nothing, and left it out.
+  const probePath = join(ROOT, 'packages', pkg, 'src', 'node-globals-probe.ts').replaceAll(
+    sep,
+    '/',
+  );
   const host = ts.createCompilerHost(options);
   const { fileExists, getSourceFile, readFile } = host;
   host.fileExists = (path) => path === probePath || fileExists.call(host, path);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 Magic Lantern contributors
 
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,12 +47,18 @@ function packedPackages(): { dir: string; name: string }[] {
     .map(({ dir, name }) => ({ dir, name }));
 }
 
-/** The paths `pnpm pack` would put in the tarball, relative to the package root. */
+/**
+ * The paths `pnpm pack` would put in the tarball, relative to the package root.
+ *
+ * Through a shell, because on Windows `pnpm` on PATH is a `pnpm.cmd` shim:
+ * `execFile` does not search PATHEXT, so a bare `pnpm` is ENOENT, and Node
+ * refuses to start a `.cmd` without a shell even by its full name
+ * (CVE-2024-27980). `execSync` uses the platform's shell, cmd.exe there and
+ * /bin/sh elsewhere, and either finds pnpm however it was installed. The
+ * command is a fixed string, so there is nothing to quote for either one.
+ */
 function packList(dir: string): string[] {
-  const output = execFileSync('pnpm', ['pack', '--dry-run', '--json'], {
-    cwd: dir,
-    encoding: 'utf8',
-  });
+  const output = execSync('pnpm pack --dry-run --json', { cwd: dir, encoding: 'utf8' });
   const start = output.indexOf('{');
   if (start === -1) throw new Error(`pnpm pack printed no JSON in ${dir}:\n${output}`);
   return (JSON.parse(output.slice(start)) as { files: { path: string }[] }).files.map(

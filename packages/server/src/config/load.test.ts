@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Magic Lantern contributors
 
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, posix, resolve } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -35,6 +35,24 @@ function load(options: Partial<LoadConfigOptions> = {}) {
   });
 }
 
+/**
+ * An absolute path on whichever host runs the test. `/srv/app` written alone is
+ * not one on Windows: it is relative to the current drive, and the loader
+ * rightly resolves it to `C:\srv\app`. This is `/srv/app` unchanged on macOS
+ * and Linux, and that drive-qualified path on Windows, which resolves to itself.
+ */
+const absolute = (path: string): string => resolve(path);
+
+/**
+ * A path under the home directory `load()` passes, as macOS or Linux would
+ * build it. `load()` asks for Linux's defaults unless told otherwise, and
+ * paths.ts builds a platform's default with that platform's separators
+ * whatever the host, so it can be asked what Windows would do from a Mac. So
+ * the expectation adds `/` too: on Windows the temporary home is a `C:\…`
+ * path, and `join` would expect `\` where the Unix default puts `/`.
+ */
+const unixDefault = (...parts: string[]): string => posix.join(join(root, 'home'), ...parts);
+
 async function writeConfig(document: unknown): Promise<void> {
   await writeFile(configPath, typeof document === 'string' ? document : JSON.stringify(document));
 }
@@ -54,7 +72,7 @@ describe('loadConfig without a file', () => {
     const config = load();
     const { dataDir, provenance, ...rest } = config;
     expect({ ...rest, dataDir: null }).toEqual(DEFAULT_CONFIG);
-    expect(dataDir).toBe(join(root, 'home', '.local', 'share', 'lantern'));
+    expect(dataDir).toBe(unixDefault('.local', 'share', 'lantern'));
     expect(provenance).toEqual({
       path: configPath,
       fileFound: false,
@@ -244,7 +262,7 @@ describe('loadConfig with the environment', () => {
         LANTERN_HOST: '0.0.0.0',
         LANTERN_PORT: '0',
         LANTERN_DATA_DIR: 'data',
-        LANTERN_APP_ROOT: '/srv/app',
+        LANTERN_APP_ROOT: absolute('/srv/app'),
         LANTERN_AUTH_MODE: 'password',
         LANTERN_TRUST_NETWORK: '1',
         LANTERN_COOKIE_SECURE: 'TRUE',
@@ -257,7 +275,7 @@ describe('loadConfig with the environment', () => {
       host: '0.0.0.0',
       port: 0,
       dataDir: join(root, 'data'),
-      appRoot: '/srv/app',
+      appRoot: absolute('/srv/app'),
       auth: { mode: 'password', trustNetwork: true, cookieSecure: true },
       allowedHosts: ['a.lan', 'b.lan'],
       allowedOrigins: ['http://localhost:5173'],
@@ -327,10 +345,12 @@ describe('loadConfig with the environment', () => {
 
 describe('the data directory', () => {
   it('takes --data over LANTERN_DATA_DIR over the file', async () => {
-    await writeConfig({ dataDir: '/from/file' });
-    expect(load().dataDir).toBe('/from/file');
-    expect(load({ env: { LANTERN_DATA_DIR: '/from/env' } }).dataDir).toBe('/from/env');
-    expect(load({ env: { LANTERN_DATA_DIR: '/from/env' }, dataDir: 'flag' }).dataDir).toBe(
+    const fromFile = absolute('/from/file');
+    const fromEnv = absolute('/from/env');
+    await writeConfig({ dataDir: fromFile });
+    expect(load().dataDir).toBe(fromFile);
+    expect(load({ env: { LANTERN_DATA_DIR: fromEnv } }).dataDir).toBe(fromEnv);
+    expect(load({ env: { LANTERN_DATA_DIR: fromEnv }, dataDir: 'flag' }).dataDir).toBe(
       join(root, 'flag'),
     );
   });
@@ -354,7 +374,7 @@ describe('the data directory', () => {
 
   it('defaults per platform', () => {
     expect(load({ platform: 'darwin' }).dataDir).toBe(
-      join(root, 'home', 'Library', 'Application Support', 'Lantern'),
+      unixDefault('Library', 'Application Support', 'Lantern'),
     );
     expect(load({ env: { XDG_DATA_HOME: '/xdg' } }).dataDir).toBe('/xdg/lantern');
   });

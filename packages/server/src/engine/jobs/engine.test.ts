@@ -254,6 +254,12 @@ describe('before start (L5, L6)', () => {
         retryAfterS: 0.02,
         loadMs: 0,
         memoryWaitMs: 5,
+        // Four steps of 25 ms, so the retried job runs for 100 ms, which a poll
+        // lands in on any host. At the harness's 1 ms a step it ran for 4 ms,
+        // and on Windows a 2 ms poll sleeps a whole timer tick (about 15.6 ms):
+        // there the poll went from the memory wait straight to done, every
+        // time, and never saw it running.
+        stepMs: 25,
       },
     });
     const record = await submit(harness);

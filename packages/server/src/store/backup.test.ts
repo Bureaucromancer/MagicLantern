@@ -129,6 +129,12 @@ describe('backupLibraries', () => {
 
   it('reports a library whose database is gone and goes on', async () => {
     const second = await registry.create('Second');
+    // The daemon stops first. Windows will not unlink a file anything holds
+    // open (EBUSY), so there a library's database can only go missing while no
+    // daemon has it, and the backup needs no daemon: it reads the registry from
+    // lantern.db itself. macOS and Linux could unlink it open, but the backup
+    // takes the same path either way, because the file is not there.
+    registry.close();
     await rm(libraryPaths(dataDir, `libraries/${second.id}`).db);
     const outcomes = await backupLibraries({
       dataDir,
@@ -139,6 +145,7 @@ describe('backupLibraries', () => {
       [lib, true],
       [second.id, false],
     ]);
+    expect(outcomes[1]).toMatchObject({ reason: expect.stringMatching(/was not found/) });
   });
 
   it('refuses a directory that is not a data directory', async () => {

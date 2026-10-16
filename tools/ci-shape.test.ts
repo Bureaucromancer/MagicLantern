@@ -119,9 +119,22 @@ describe('the OpenAPI drift check', () => {
     const writeSpec = (text: string): void => {
       writeFileSync(join(repo, SPEC), text);
     };
-    /** The check's exit status, run after the spec has been emitted. */
-    const check = (): number =>
-      spawnSync('sh', ['-c', gitSteps], { cwd: repo, env: gitEnv, stdio: 'ignore' }).status ?? -1;
+    /**
+     * The check's exit status, run after the spec has been emitted.
+     *
+     * Through the platform's shell (`shell: true`: /bin/sh, or cmd.exe on
+     * Windows) rather than `sh` by name, which Windows has on PATH only inside
+     * Git Bash: from PowerShell or cmd the spawn failed, the status was null,
+     * and the two cases expecting failure passed without running a step. What
+     * runs the script for real is neither shell but pnpm's emulator
+     * (`shellEmulator` in pnpm-workspace.yaml); all three chain `&&` on exit
+     * status, which is the only shell syntax the git steps use.
+     */
+    const check = (): number => {
+      const result = spawnSync(gitSteps, { shell: true, cwd: repo, env: gitEnv, stdio: 'ignore' });
+      if (result.error !== undefined) throw result.error;
+      return result.status ?? -1;
+    };
 
     beforeEach(() => {
       repo = mkdtempSync(join(tmpdir(), 'lantern-openapi-check-'));
