@@ -29,11 +29,12 @@ export const FieldSource = Type.Union(
     Type.Literal('profile'),
     Type.Literal('descriptor'),
     Type.Literal('drawn'),
+    Type.Literal('input'),
     Type.Literal('builtin'),
   ],
   {
     description:
-      "Where the value came from, by precedence (A3): `request`, then `preset`, `model` (the model's overrides), `profile`, `descriptor` (the route's default). `drawn`: a seed Lantern drew for `\"random\"`. `builtin`: Lantern's own fallback where nothing else gives one (`count` is 1).",
+      "Where the value came from, by precedence (A3): `request`, then `preset`, `model` (the model's overrides), `profile`, `descriptor` (the route's default). `drawn`: a seed Lantern drew for `\"random\"`. `input`: the size of the init image (after its crop), where the mode takes the output size from it. `builtin`: Lantern's own fallback where nothing else gives one (`count` is 1).",
   },
 );
 export type FieldSource = Static<typeof FieldSource>;
@@ -44,6 +45,7 @@ export const FIELD_SOURCES: readonly FieldSource[] = [
   'profile',
   'descriptor',
   'drawn',
+  'input',
   'builtin',
 ];
 

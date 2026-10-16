@@ -85,7 +85,6 @@ describe.each([
 describe('install schema version 1', () => {
   // In a strict table a primary key is implicitly not null, hence notnull 1 on the ids.
   it('has the library registry and the lease', () => {
-    expect(INSTALL_SCHEMA_VERSION).toBe(1);
     const db = storeAtVersion(INSTALL_STEPS, 1);
     expect(tableNames(db)).toEqual(['lease', 'libraries']);
     expect(columns(db, 'libraries')).toEqual([
@@ -117,6 +116,121 @@ describe('install schema version 1', () => {
     );
     library.run('lib_a');
     expect(() => library.run('lib_b')).toThrow(/UNIQUE constraint/);
+  });
+});
+
+describe('install schema version 2', () => {
+  const backend = (id: string, extra: Record<string, unknown> = {}) => {
+    const row = {
+      id,
+      kind: 'sdcpp',
+      name: 'sd-server',
+      base_url: 'http://127.0.0.1:1234',
+      resource_group: '127.0.0.1',
+      source: 'ui',
+      created_at: 1,
+      updated_at: 1,
+      ...extra,
+    };
+    const names = Object.keys(row);
+    return [
+      `insert into backends (${names.join(', ')}) values (${names.map(() => '?').join(', ')})`,
+      Object.values(row) as (string | number | null)[],
+    ] as const;
+  };
+  const model = (id: string, fingerprint: string) =>
+    `insert into models (id, display_name, family, fingerprint, created_at, updated_at)
+     values ('${id}', 'Model', 'sdxl', '${fingerprint}', 1, 1)`;
+  const route = (id: string, modelId: string, extra = '') =>
+    `insert into routes (id, model_id, backend_id, adapter_kind, base_url, created_at, updated_at${extra === '' ? '' : ', health'})
+     values ('${id}', '${modelId}', 'be_a', 'sdcpp', 'http://127.0.0.1:1234', 1, 1${extra === '' ? '' : `, ${extra}`})`;
+
+  it('adds backends, models and routes', () => {
+    expect(INSTALL_SCHEMA_VERSION).toBe(2);
+    const db = storeAtVersion(INSTALL_STEPS, 2);
+    expect(tableNames(db)).toEqual(['backends', 'lease', 'libraries', 'models', 'routes']);
+    expect(columns(db, 'routes').map((column) => column.name)).toEqual([
+      'id',
+      'model_id',
+      'backend_id',
+      'adapter_kind',
+      'manager_ref',
+      'base_url',
+      'priority',
+      'cost',
+      'health',
+      'load_state',
+      'health_detail',
+      'retired_at',
+      'descriptor',
+      'descriptor_digest',
+      'descriptor_fetched_at',
+      'probe_results',
+      'overrides',
+      'created_at',
+      'updated_at',
+    ]);
+  });
+
+  it("keeps version 1's rows", () => {
+    const db = storeAtVersion(INSTALL_STEPS, 1);
+    db.exec(
+      "insert into libraries (id, name, path, created_at) values ('lib_a', 'Library', 'libraries/lib_a', 5)",
+    );
+    db.exec("insert into lease values (1, 7, 'proc_a', 'boot', 'host', 1, 2)");
+    runMigrations(db, INSTALL_STEPS.slice(0, 2));
+    expect(db.prepare('select * from libraries').all()).toEqual([
+      {
+        id: 'lib_a',
+        name: 'Library',
+        path: 'libraries/lib_a',
+        created_at: 5,
+        last_opened_at: null,
+      },
+    ]);
+    expect(db.prepare('select pid, process_id from lease').all()).toEqual([
+      { pid: 7, process_id: 'proc_a' },
+    ]);
+  });
+
+  it('gives a fingerprint one model, and a backend one route per model', () => {
+    const db = storeAtVersion(INSTALL_STEPS, 2);
+    const [sql, values] = backend('be_a');
+    db.prepare(sql).run(...values);
+    db.exec(model('mdl_a', '{"kind":"file","path":"/a","stem":"a"}'));
+    expect(() => {
+      db.exec(model('mdl_b', '{"kind":"file","path":"/a","stem":"a"}'));
+    }).toThrow(/UNIQUE/);
+    db.exec(route('rt_a', 'mdl_a'));
+    expect(() => {
+      db.exec(route('rt_b', 'mdl_a'));
+    }).toThrow(/UNIQUE/);
+  });
+
+  it('holds sources, statuses and health to their words, and routes to rows that exist', () => {
+    const db = storeAtVersion(INSTALL_STEPS, 2);
+    const insert = (id: string, extra: Record<string, unknown>) => {
+      const [sql, values] = backend(id, extra);
+      db.prepare(sql).run(...values);
+    };
+    insert('be_a', {});
+    expect(() => {
+      insert('be_b', { source: 'file' });
+    }).toThrow(/CHECK/);
+    expect(() => {
+      insert('be_c', { status: 'gone' });
+    }).toThrow(/CHECK/);
+    expect(() => {
+      insert('be_d', { concurrency: 0 });
+    }).toThrow(/CHECK/);
+    db.exec(model('mdl_a', '{"kind":"file","path":"/a","stem":"a"}'));
+    expect(() => {
+      db.exec(route('rt_a', 'mdl_a', "'sick'"));
+    }).toThrow(/CHECK/);
+    db.exec('pragma foreign_keys = on');
+    expect(() => {
+      db.exec(route('rt_b', 'mdl_missing'));
+    }).toThrow(/FOREIGN KEY/);
   });
 });
 

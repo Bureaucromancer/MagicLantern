@@ -1,0 +1,1495 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`describe (SD1) > passes every descriptor rule, and matches its snapshot 1`] = `
+{
+  "modes": {
+    "edit": {
+      "adapters": {
+        "lora": {
+          "options": [
+            {
+              "id": "detail-tweaker-xl.safetensors",
+              "label": "detail-tweaker-xl",
+            },
+            {
+              "id": "style/film-grain.safetensors",
+              "label": "film-grain",
+            },
+          ],
+          "state": "native",
+        },
+      },
+      "control": {
+        "cancel_queued": true,
+        "cancel_running": false,
+        "progress": "none",
+      },
+      "extensions": {
+        "sdcpp": {
+          "additionalProperties": false,
+          "properties": {
+            "cache_mode": {
+              "default": "",
+              "type": "string",
+            },
+            "cache_option": {
+              "default": "",
+              "type": "string",
+            },
+            "image_preprocess": {
+              "anyOf": [
+                {
+                  "type": "string",
+                },
+                {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+              "default": "",
+              "description": "Input geometry rules applied once to every input image.",
+            },
+            "increase_ref_index": {
+              "default": false,
+              "type": "boolean",
+            },
+            "ref_image_args": {
+              "default": "",
+              "type": "string",
+            },
+            "scm_mask": {
+              "default": "",
+              "type": "string",
+            },
+            "scm_policy_dynamic": {
+              "default": true,
+              "type": "boolean",
+            },
+            "shifted_timestep": {
+              "default": 0,
+              "description": "Timestep shift (NitroFusion).",
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer",
+            },
+            "slg": {
+              "additionalProperties": false,
+              "description": "Skip-layer guidance (SD3.5, Wan).",
+              "properties": {
+                "layer_end": {
+                  "default": 0.20000000298023224,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layer_start": {
+                  "default": 0.009999999776482582,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layers": {
+                  "default": [
+                    7,
+                    8,
+                    9,
+                  ],
+                  "items": {
+                    "minimum": 0,
+                    "type": "integer",
+                  },
+                  "type": "array",
+                },
+                "scale": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+              },
+              "type": "object",
+            },
+            "vae_tiling_params": {
+              "additionalProperties": false,
+              "description": "VAE tiling: saves memory, and can change pixels (L7).",
+              "properties": {
+                "enabled": {
+                  "default": true,
+                  "type": "boolean",
+                },
+                "extra_tiling_args": {
+                  "default": "",
+                  "type": "string",
+                },
+                "rel_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "rel_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "target_overlap": {
+                  "default": 0.5,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "tile_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                "tile_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+              },
+              "type": "object",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "fields": {
+        "adapters.lora.id": {
+          "state": "native",
+        },
+        "adapters.lora.weight": {
+          "state": "native",
+        },
+        "count": {
+          "default": 1,
+          "native_max": 8,
+          "state": "native",
+        },
+        "geometry.height": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "geometry.width": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "inputs.ref.asset_id": {
+          "state": "native",
+        },
+        "inputs.ref.crop": {
+          "reason": "Lantern crops the image before sending it.",
+          "state": "emulated",
+        },
+        "inputs.ref.weight": {
+          "reason": "sd-server takes no weight per reference image.",
+          "state": "ignored",
+        },
+        "passes.hires.denoise": {
+          "default": 0.699999988079071,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "state": "native",
+        },
+        "passes.hires.scale": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "state": "native",
+        },
+        "passes.hires.steps": {
+          "maximum": 100,
+          "state": "native",
+        },
+        "passes.hires.target.height": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.target.width": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.upscaler": {
+          "default": "Latent",
+          "enum": [
+            "Lanczos",
+            "Nearest",
+            "Latent",
+            "Latent (nearest)",
+            "Latent (nearest-exact)",
+            "Latent (antialiased)",
+            "Latent (bicubic)",
+            "Latent (bicubic antialiased)",
+          ],
+          "state": "native",
+        },
+        "prompt.dialect_hint": {
+          "reason": "A hint for Lantern's advice about the prompt; nothing is sent to the backend.",
+          "state": "ignored",
+        },
+        "prompt.negative": {
+          "default": "",
+          "state": "native",
+        },
+        "prompt.positive": {
+          "state": "native",
+        },
+        "sampling.cfg": {
+          "default": 7,
+          "state": "native",
+        },
+        "sampling.clip_skip": {
+          "state": "native",
+        },
+        "sampling.distilled_guidance": {
+          "default": 3.5,
+          "state": "native",
+        },
+        "sampling.eta": {
+          "state": "native",
+        },
+        "sampling.flow_shift": {
+          "state": "native",
+        },
+        "sampling.image_cfg": {
+          "state": "native",
+        },
+        "sampling.sampler": {
+          "enum": [
+            "euler",
+            "euler_a",
+            "heun",
+            "dpm2",
+            "dpm++2s_a",
+            "dpm++2m",
+            "dpm++2mv2",
+            "ipndm",
+            "ipndm_v",
+            "lcm",
+            "ddim_trailing",
+            "tcd",
+            "res_multistep",
+            "res_2s",
+            "er_sde",
+            "euler_cfg_pp",
+            "euler_a_cfg_pp",
+            "euler_ge",
+            "dpm++2m_sde",
+            "dpm++2m_sde_bt",
+            "lms",
+          ],
+          "state": "native",
+        },
+        "sampling.scheduler": {
+          "enum": [
+            "discrete",
+            "karras",
+            "exponential",
+            "ays",
+            "gits",
+            "sgm_uniform",
+            "simple",
+            "smoothstep",
+            "kl_optimal",
+            "lcm",
+            "bong_tangent",
+            "ltx2",
+            "logit_normal",
+            "flux2",
+            "flux",
+            "beta",
+            "llada_image",
+          ],
+          "state": "native",
+        },
+        "sampling.seed": {
+          "state": "native",
+        },
+        "sampling.steps": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "state": "native",
+        },
+      },
+      "inputs": {
+        "ref": {
+          "media": [
+            "image/*",
+          ],
+          "min": 1,
+          "state": "native",
+        },
+      },
+      "passes": {
+        "hires": {
+          "max": 1,
+          "state": "native",
+        },
+      },
+    },
+    "img2img": {
+      "adapters": {
+        "lora": {
+          "options": [
+            {
+              "id": "detail-tweaker-xl.safetensors",
+              "label": "detail-tweaker-xl",
+            },
+            {
+              "id": "style/film-grain.safetensors",
+              "label": "film-grain",
+            },
+          ],
+          "state": "native",
+        },
+      },
+      "control": {
+        "cancel_queued": true,
+        "cancel_running": false,
+        "progress": "none",
+      },
+      "extensions": {
+        "sdcpp": {
+          "additionalProperties": false,
+          "properties": {
+            "cache_mode": {
+              "default": "",
+              "type": "string",
+            },
+            "cache_option": {
+              "default": "",
+              "type": "string",
+            },
+            "image_preprocess": {
+              "anyOf": [
+                {
+                  "type": "string",
+                },
+                {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+              "default": "",
+              "description": "Input geometry rules applied once to every input image.",
+            },
+            "scm_mask": {
+              "default": "",
+              "type": "string",
+            },
+            "scm_policy_dynamic": {
+              "default": true,
+              "type": "boolean",
+            },
+            "shifted_timestep": {
+              "default": 0,
+              "description": "Timestep shift (NitroFusion).",
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer",
+            },
+            "slg": {
+              "additionalProperties": false,
+              "description": "Skip-layer guidance (SD3.5, Wan).",
+              "properties": {
+                "layer_end": {
+                  "default": 0.20000000298023224,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layer_start": {
+                  "default": 0.009999999776482582,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layers": {
+                  "default": [
+                    7,
+                    8,
+                    9,
+                  ],
+                  "items": {
+                    "minimum": 0,
+                    "type": "integer",
+                  },
+                  "type": "array",
+                },
+                "scale": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+              },
+              "type": "object",
+            },
+            "vae_tiling_params": {
+              "additionalProperties": false,
+              "description": "VAE tiling: saves memory, and can change pixels (L7).",
+              "properties": {
+                "enabled": {
+                  "default": true,
+                  "type": "boolean",
+                },
+                "extra_tiling_args": {
+                  "default": "",
+                  "type": "string",
+                },
+                "rel_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "rel_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "target_overlap": {
+                  "default": 0.5,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "tile_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                "tile_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+              },
+              "type": "object",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "fields": {
+        "adapters.lora.id": {
+          "state": "native",
+        },
+        "adapters.lora.weight": {
+          "state": "native",
+        },
+        "count": {
+          "default": 1,
+          "native_max": 8,
+          "state": "native",
+        },
+        "geometry.height": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "geometry.width": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "inputs.init.asset_id": {
+          "state": "native",
+        },
+        "inputs.init.crop": {
+          "reason": "Lantern crops the image before sending it.",
+          "state": "emulated",
+        },
+        "passes.hires.denoise": {
+          "default": 0.699999988079071,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "state": "native",
+        },
+        "passes.hires.scale": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "state": "native",
+        },
+        "passes.hires.steps": {
+          "maximum": 100,
+          "state": "native",
+        },
+        "passes.hires.target.height": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.target.width": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.upscaler": {
+          "default": "Latent",
+          "enum": [
+            "Lanczos",
+            "Nearest",
+            "Latent",
+            "Latent (nearest)",
+            "Latent (nearest-exact)",
+            "Latent (antialiased)",
+            "Latent (bicubic)",
+            "Latent (bicubic antialiased)",
+          ],
+          "state": "native",
+        },
+        "prompt.dialect_hint": {
+          "reason": "A hint for Lantern's advice about the prompt; nothing is sent to the backend.",
+          "state": "ignored",
+        },
+        "prompt.negative": {
+          "default": "",
+          "state": "native",
+        },
+        "prompt.positive": {
+          "state": "native",
+        },
+        "sampling.cfg": {
+          "default": 7,
+          "state": "native",
+        },
+        "sampling.clip_skip": {
+          "state": "native",
+        },
+        "sampling.denoise": {
+          "default": 0.75,
+          "state": "native",
+        },
+        "sampling.distilled_guidance": {
+          "default": 3.5,
+          "state": "native",
+        },
+        "sampling.eta": {
+          "state": "native",
+        },
+        "sampling.flow_shift": {
+          "state": "native",
+        },
+        "sampling.image_cfg": {
+          "state": "native",
+        },
+        "sampling.sampler": {
+          "enum": [
+            "euler",
+            "euler_a",
+            "heun",
+            "dpm2",
+            "dpm++2s_a",
+            "dpm++2m",
+            "dpm++2mv2",
+            "ipndm",
+            "ipndm_v",
+            "lcm",
+            "ddim_trailing",
+            "tcd",
+            "res_multistep",
+            "res_2s",
+            "er_sde",
+            "euler_cfg_pp",
+            "euler_a_cfg_pp",
+            "euler_ge",
+            "dpm++2m_sde",
+            "dpm++2m_sde_bt",
+            "lms",
+          ],
+          "state": "native",
+        },
+        "sampling.scheduler": {
+          "enum": [
+            "discrete",
+            "karras",
+            "exponential",
+            "ays",
+            "gits",
+            "sgm_uniform",
+            "simple",
+            "smoothstep",
+            "kl_optimal",
+            "lcm",
+            "bong_tangent",
+            "ltx2",
+            "logit_normal",
+            "flux2",
+            "flux",
+            "beta",
+            "llada_image",
+          ],
+          "state": "native",
+        },
+        "sampling.seed": {
+          "state": "native",
+        },
+        "sampling.steps": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "state": "native",
+        },
+      },
+      "inputs": {
+        "init": {
+          "max": 1,
+          "media": [
+            "image/*",
+          ],
+          "min": 1,
+          "state": "native",
+        },
+      },
+      "passes": {
+        "hires": {
+          "max": 1,
+          "state": "native",
+        },
+      },
+    },
+    "inpaint": {
+      "adapters": {
+        "lora": {
+          "options": [
+            {
+              "id": "detail-tweaker-xl.safetensors",
+              "label": "detail-tweaker-xl",
+            },
+            {
+              "id": "style/film-grain.safetensors",
+              "label": "film-grain",
+            },
+          ],
+          "state": "native",
+        },
+      },
+      "control": {
+        "cancel_queued": true,
+        "cancel_running": false,
+        "progress": "none",
+      },
+      "extensions": {
+        "sdcpp": {
+          "additionalProperties": false,
+          "properties": {
+            "cache_mode": {
+              "default": "",
+              "type": "string",
+            },
+            "cache_option": {
+              "default": "",
+              "type": "string",
+            },
+            "image_preprocess": {
+              "anyOf": [
+                {
+                  "type": "string",
+                },
+                {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+              "default": "",
+              "description": "Input geometry rules applied once to every input image.",
+            },
+            "scm_mask": {
+              "default": "",
+              "type": "string",
+            },
+            "scm_policy_dynamic": {
+              "default": true,
+              "type": "boolean",
+            },
+            "shifted_timestep": {
+              "default": 0,
+              "description": "Timestep shift (NitroFusion).",
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer",
+            },
+            "slg": {
+              "additionalProperties": false,
+              "description": "Skip-layer guidance (SD3.5, Wan).",
+              "properties": {
+                "layer_end": {
+                  "default": 0.20000000298023224,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layer_start": {
+                  "default": 0.009999999776482582,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layers": {
+                  "default": [
+                    7,
+                    8,
+                    9,
+                  ],
+                  "items": {
+                    "minimum": 0,
+                    "type": "integer",
+                  },
+                  "type": "array",
+                },
+                "scale": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+              },
+              "type": "object",
+            },
+            "vae_tiling_params": {
+              "additionalProperties": false,
+              "description": "VAE tiling: saves memory, and can change pixels (L7).",
+              "properties": {
+                "enabled": {
+                  "default": true,
+                  "type": "boolean",
+                },
+                "extra_tiling_args": {
+                  "default": "",
+                  "type": "string",
+                },
+                "rel_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "rel_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "target_overlap": {
+                  "default": 0.5,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "tile_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                "tile_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+              },
+              "type": "object",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "fields": {
+        "adapters.lora.id": {
+          "state": "native",
+        },
+        "adapters.lora.weight": {
+          "state": "native",
+        },
+        "count": {
+          "default": 1,
+          "native_max": 8,
+          "state": "native",
+        },
+        "geometry.height": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "geometry.width": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "inputs.init.asset_id": {
+          "state": "native",
+        },
+        "inputs.init.crop": {
+          "reason": "Lantern crops the image before sending it.",
+          "state": "emulated",
+        },
+        "inputs.mask.asset_id": {
+          "state": "native",
+        },
+        "inputs.mask.crop": {
+          "reason": "Lantern crops the image before sending it.",
+          "state": "emulated",
+        },
+        "passes.hires.denoise": {
+          "default": 0.699999988079071,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "state": "native",
+        },
+        "passes.hires.scale": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "state": "native",
+        },
+        "passes.hires.steps": {
+          "maximum": 100,
+          "state": "native",
+        },
+        "passes.hires.target.height": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.target.width": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.upscaler": {
+          "default": "Latent",
+          "enum": [
+            "Lanczos",
+            "Nearest",
+            "Latent",
+            "Latent (nearest)",
+            "Latent (nearest-exact)",
+            "Latent (antialiased)",
+            "Latent (bicubic)",
+            "Latent (bicubic antialiased)",
+          ],
+          "state": "native",
+        },
+        "prompt.dialect_hint": {
+          "reason": "A hint for Lantern's advice about the prompt; nothing is sent to the backend.",
+          "state": "ignored",
+        },
+        "prompt.negative": {
+          "default": "",
+          "state": "native",
+        },
+        "prompt.positive": {
+          "state": "native",
+        },
+        "sampling.cfg": {
+          "default": 7,
+          "state": "native",
+        },
+        "sampling.clip_skip": {
+          "state": "native",
+        },
+        "sampling.denoise": {
+          "default": 0.75,
+          "state": "native",
+        },
+        "sampling.distilled_guidance": {
+          "default": 3.5,
+          "state": "native",
+        },
+        "sampling.eta": {
+          "state": "native",
+        },
+        "sampling.flow_shift": {
+          "state": "native",
+        },
+        "sampling.image_cfg": {
+          "state": "native",
+        },
+        "sampling.sampler": {
+          "enum": [
+            "euler",
+            "euler_a",
+            "heun",
+            "dpm2",
+            "dpm++2s_a",
+            "dpm++2m",
+            "dpm++2mv2",
+            "ipndm",
+            "ipndm_v",
+            "lcm",
+            "ddim_trailing",
+            "tcd",
+            "res_multistep",
+            "res_2s",
+            "er_sde",
+            "euler_cfg_pp",
+            "euler_a_cfg_pp",
+            "euler_ge",
+            "dpm++2m_sde",
+            "dpm++2m_sde_bt",
+            "lms",
+          ],
+          "state": "native",
+        },
+        "sampling.scheduler": {
+          "enum": [
+            "discrete",
+            "karras",
+            "exponential",
+            "ays",
+            "gits",
+            "sgm_uniform",
+            "simple",
+            "smoothstep",
+            "kl_optimal",
+            "lcm",
+            "bong_tangent",
+            "ltx2",
+            "logit_normal",
+            "flux2",
+            "flux",
+            "beta",
+            "llada_image",
+          ],
+          "state": "native",
+        },
+        "sampling.seed": {
+          "state": "native",
+        },
+        "sampling.steps": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "state": "native",
+        },
+      },
+      "inputs": {
+        "init": {
+          "max": 1,
+          "media": [
+            "image/*",
+          ],
+          "min": 1,
+          "state": "native",
+        },
+        "mask": {
+          "max": 1,
+          "media": [
+            "image/*",
+          ],
+          "min": 1,
+          "state": "native",
+        },
+      },
+      "passes": {
+        "hires": {
+          "max": 1,
+          "state": "native",
+        },
+      },
+    },
+    "txt2img": {
+      "adapters": {
+        "lora": {
+          "options": [
+            {
+              "id": "detail-tweaker-xl.safetensors",
+              "label": "detail-tweaker-xl",
+            },
+            {
+              "id": "style/film-grain.safetensors",
+              "label": "film-grain",
+            },
+          ],
+          "state": "native",
+        },
+      },
+      "control": {
+        "cancel_queued": true,
+        "cancel_running": false,
+        "progress": "none",
+      },
+      "extensions": {
+        "sdcpp": {
+          "additionalProperties": false,
+          "properties": {
+            "cache_mode": {
+              "default": "",
+              "type": "string",
+            },
+            "cache_option": {
+              "default": "",
+              "type": "string",
+            },
+            "image_preprocess": {
+              "anyOf": [
+                {
+                  "type": "string",
+                },
+                {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+              "default": "",
+              "description": "Input geometry rules applied once to every input image.",
+            },
+            "scm_mask": {
+              "default": "",
+              "type": "string",
+            },
+            "scm_policy_dynamic": {
+              "default": true,
+              "type": "boolean",
+            },
+            "shifted_timestep": {
+              "default": 0,
+              "description": "Timestep shift (NitroFusion).",
+              "maximum": 1000,
+              "minimum": 0,
+              "type": "integer",
+            },
+            "slg": {
+              "additionalProperties": false,
+              "description": "Skip-layer guidance (SD3.5, Wan).",
+              "properties": {
+                "layer_end": {
+                  "default": 0.20000000298023224,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layer_start": {
+                  "default": 0.009999999776482582,
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "layers": {
+                  "default": [
+                    7,
+                    8,
+                    9,
+                  ],
+                  "items": {
+                    "minimum": 0,
+                    "type": "integer",
+                  },
+                  "type": "array",
+                },
+                "scale": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+              },
+              "type": "object",
+            },
+            "vae_tiling_params": {
+              "additionalProperties": false,
+              "description": "VAE tiling: saves memory, and can change pixels (L7).",
+              "properties": {
+                "enabled": {
+                  "default": true,
+                  "type": "boolean",
+                },
+                "extra_tiling_args": {
+                  "default": "",
+                  "type": "string",
+                },
+                "rel_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "rel_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "target_overlap": {
+                  "default": 0.5,
+                  "minimum": 0,
+                  "type": "number",
+                },
+                "tile_size_x": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                "tile_size_y": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+              },
+              "type": "object",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "fields": {
+        "adapters.lora.id": {
+          "state": "native",
+        },
+        "adapters.lora.weight": {
+          "state": "native",
+        },
+        "count": {
+          "default": 1,
+          "native_max": 8,
+          "state": "native",
+        },
+        "geometry.height": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "geometry.width": {
+          "default": 512,
+          "maximum": 4096,
+          "minimum": 64,
+          "state": "native",
+        },
+        "passes.hires.denoise": {
+          "default": 0.699999988079071,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "state": "native",
+        },
+        "passes.hires.scale": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "state": "native",
+        },
+        "passes.hires.steps": {
+          "maximum": 100,
+          "state": "native",
+        },
+        "passes.hires.target.height": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.target.width": {
+          "maximum": 4096,
+          "state": "native",
+        },
+        "passes.hires.upscaler": {
+          "default": "Latent",
+          "enum": [
+            "Lanczos",
+            "Nearest",
+            "Latent",
+            "Latent (nearest)",
+            "Latent (nearest-exact)",
+            "Latent (antialiased)",
+            "Latent (bicubic)",
+            "Latent (bicubic antialiased)",
+          ],
+          "state": "native",
+        },
+        "prompt.dialect_hint": {
+          "reason": "A hint for Lantern's advice about the prompt; nothing is sent to the backend.",
+          "state": "ignored",
+        },
+        "prompt.negative": {
+          "default": "",
+          "state": "native",
+        },
+        "prompt.positive": {
+          "state": "native",
+        },
+        "sampling.cfg": {
+          "default": 7,
+          "state": "native",
+        },
+        "sampling.clip_skip": {
+          "state": "native",
+        },
+        "sampling.distilled_guidance": {
+          "default": 3.5,
+          "state": "native",
+        },
+        "sampling.eta": {
+          "state": "native",
+        },
+        "sampling.flow_shift": {
+          "state": "native",
+        },
+        "sampling.image_cfg": {
+          "state": "native",
+        },
+        "sampling.sampler": {
+          "enum": [
+            "euler",
+            "euler_a",
+            "heun",
+            "dpm2",
+            "dpm++2s_a",
+            "dpm++2m",
+            "dpm++2mv2",
+            "ipndm",
+            "ipndm_v",
+            "lcm",
+            "ddim_trailing",
+            "tcd",
+            "res_multistep",
+            "res_2s",
+            "er_sde",
+            "euler_cfg_pp",
+            "euler_a_cfg_pp",
+            "euler_ge",
+            "dpm++2m_sde",
+            "dpm++2m_sde_bt",
+            "lms",
+          ],
+          "state": "native",
+        },
+        "sampling.scheduler": {
+          "enum": [
+            "discrete",
+            "karras",
+            "exponential",
+            "ays",
+            "gits",
+            "sgm_uniform",
+            "simple",
+            "smoothstep",
+            "kl_optimal",
+            "lcm",
+            "bong_tangent",
+            "ltx2",
+            "logit_normal",
+            "flux2",
+            "flux",
+            "beta",
+            "llada_image",
+          ],
+          "state": "native",
+        },
+        "sampling.seed": {
+          "state": "native",
+        },
+        "sampling.steps": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "state": "native",
+        },
+      },
+      "passes": {
+        "hires": {
+          "max": 1,
+          "state": "native",
+        },
+      },
+    },
+  },
+  "route": "rt_sdxl",
+}
+`;
+
+exports[`prepare (SD2) > maps LoRAs by path, the hires pass, a native sampler and a batch 1`] = `
+{
+  "batch_count": 4,
+  "cache_mode": "",
+  "clip_skip": 2,
+  "embed_image_metadata": true,
+  "height": 1024,
+  "hires": {
+    "denoising_strength": 0.5,
+    "enabled": true,
+    "scale": 1.5,
+    "steps": 0,
+    "target_height": 0,
+    "target_width": 0,
+    "upscaler": "Lanczos",
+  },
+  "image_preprocess": "",
+  "lora": [
+    {
+      "is_high_noise": false,
+      "multiplier": 0.6,
+      "path": "style/film-grain.safetensors",
+    },
+  ],
+  "negative_prompt": "",
+  "output_compression": 100,
+  "output_format": "png",
+  "prompt": "a lighthouse at dusk",
+  "sample_params": {
+    "guidance": {
+      "slg": {
+        "layer_end": 0.2,
+        "layer_start": 0.01,
+        "layers": [
+          7,
+          8,
+          9,
+        ],
+        "scale": 0,
+      },
+    },
+    "sample_method": "euler_new",
+    "sample_steps": 20,
+    "scheduler": "karras",
+    "shifted_timestep": 0,
+  },
+  "seed": 9,
+  "vae_tiling_params": {
+    "enabled": true,
+    "target_overlap": 0.5,
+    "tile_size_x": 0,
+    "tile_size_y": 0,
+  },
+  "width": 1024,
+}
+`;
+
+exports[`prepare (SD2) > maps img2img: the init image as a placeholder, denoise as strength 1`] = `
+{
+  "batch_count": 1,
+  "cache_mode": "",
+  "clip_skip": -1,
+  "embed_image_metadata": true,
+  "height": 1024,
+  "hires": {
+    "enabled": false,
+  },
+  "image_preprocess": "",
+  "init_image": {
+    "$asset": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  },
+  "lora": [],
+  "negative_prompt": "",
+  "output_compression": 100,
+  "output_format": "png",
+  "prompt": "a lighthouse at dusk",
+  "sample_params": {
+    "guidance": {
+      "slg": {
+        "layer_end": 0.2,
+        "layer_start": 0.01,
+        "layers": [
+          7,
+          8,
+          9,
+        ],
+        "scale": 0,
+      },
+    },
+    "sample_method": "euler",
+    "sample_steps": 20,
+    "shifted_timestep": 0,
+  },
+  "seed": 7,
+  "strength": 0.6,
+  "vae_tiling_params": {
+    "enabled": true,
+    "target_overlap": 0.5,
+    "tile_size_x": 0,
+    "tile_size_y": 0,
+  },
+  "width": 1024,
+}
+`;
+
+exports[`prepare (SD2) > maps inpaint with an uploaded mask (A33) 1`] = `
+{
+  "batch_count": 1,
+  "cache_mode": "",
+  "clip_skip": -1,
+  "embed_image_metadata": true,
+  "height": 1024,
+  "hires": {
+    "enabled": false,
+  },
+  "image_preprocess": "",
+  "init_image": {
+    "$asset": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  },
+  "lora": [],
+  "mask_image": {
+    "$asset": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  },
+  "negative_prompt": "",
+  "output_compression": 100,
+  "output_format": "png",
+  "prompt": "a lighthouse at dusk",
+  "sample_params": {
+    "guidance": {
+      "slg": {
+        "layer_end": 0.2,
+        "layer_start": 0.01,
+        "layers": [
+          7,
+          8,
+          9,
+        ],
+        "scale": 0,
+      },
+    },
+    "sample_steps": 20,
+    "shifted_timestep": 0,
+  },
+  "seed": 7,
+  "strength": 0.9,
+  "vae_tiling_params": {
+    "enabled": true,
+    "target_overlap": 0.5,
+    "tile_size_x": 0,
+    "tile_size_y": 0,
+  },
+  "width": 1024,
+}
+`;
+
+exports[`prepare (SD2) > maps txt2img, writing out what the server would otherwise assume (L7) 1`] = `
+{
+  "batch_count": 1,
+  "cache_mode": "",
+  "clip_skip": -1,
+  "embed_image_metadata": true,
+  "height": 1024,
+  "hires": {
+    "enabled": false,
+  },
+  "image_preprocess": "",
+  "lora": [],
+  "negative_prompt": "",
+  "output_compression": 100,
+  "output_format": "png",
+  "prompt": "a lighthouse at dusk",
+  "sample_params": {
+    "guidance": {
+      "distilled_guidance": 3.5,
+      "slg": {
+        "layer_end": 0.2,
+        "layer_start": 0.01,
+        "layers": [
+          7,
+          8,
+          9,
+        ],
+        "scale": 0,
+      },
+      "txt_cfg": 6.5,
+    },
+    "sample_method": "euler_a",
+    "sample_steps": 30,
+    "shifted_timestep": 0,
+  },
+  "seed": 1234,
+  "vae_tiling_params": {
+    "enabled": true,
+    "target_overlap": 0.5,
+    "tile_size_x": 0,
+    "tile_size_y": 0,
+  },
+  "width": 1024,
+}
+`;

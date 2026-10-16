@@ -3,7 +3,16 @@
 
 /** The resolver: canonical request and model in, effective request, field report and route out. */
 
-export { fillDefaults, type FillLayers, type FillResult, routeNarrowing } from './fill.js';
+export {
+  fillDefaults,
+  fillExtensionDefaults,
+  type FillLayers,
+  type FillOptions,
+  type FillResult,
+  routeNarrowing,
+  SIZE_GIVING_ROLES,
+  snapSize,
+} from './fill.js';
 export { fieldOfPointer, type Leaf, requestLeaves, valueAt } from './leaves.js';
 export { buildFieldReport, profileWarnings } from './report.js';
 export { anotherRoute, type RerunSource, reproduce, reroll } from './rerun.js';

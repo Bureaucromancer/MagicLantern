@@ -78,6 +78,7 @@ import type {
 } from '../resolver/index.js';
 import type { BackendBindings, RouteBinding } from './bindings.js';
 import type { EventBus } from './events.js';
+import { inputSizer } from './sizes.js';
 import { JobTransitions } from './transitions.js';
 
 /** How often a dispatched job is polled. */
@@ -308,6 +309,7 @@ export class JobEngine {
         request: input.request,
         model,
         ...(input.route === undefined ? {} : { route: input.route }),
+        inputSize: inputSizer(this.libraries, libraryId),
       },
       input.seed,
     );
@@ -792,6 +794,7 @@ export class JobEngine {
         ...(provisional.fingerprint === undefined ? {} : { fingerprint: provisional.fingerprint }),
       },
       model,
+      { inputSize: inputSizer(this.libraries, libraryId) },
     );
     if (!finalised.ok) {
       this.block(libraryId, store, id, finalised.blocked_reason, later());
@@ -854,7 +857,12 @@ export class JobEngine {
       family: model.family,
       ...(model.variant === undefined ? {} : { variant: model.variant }),
       fingerprint: identity ?? route?.fingerprint ?? null,
-      backend: { id: binding.backendId, kind: binding.backendKind, base_url: binding.baseUrl },
+      backend: {
+        id: binding.backendId,
+        kind: binding.backendKind,
+        base_url: binding.baseUrl,
+        ...(binding.manager === undefined ? {} : { manager: binding.manager }),
+      },
       descriptor_digest: finalised.resolution.descriptor_digest,
     };
     const submitting = this.move(libraryId, store, id, ['queued'], {

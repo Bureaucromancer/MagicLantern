@@ -50,6 +50,47 @@ export type AuthModeSetting = Static<typeof AuthModeSetting>;
 
 const HostName = Type.String({ minLength: 1 });
 
+/**
+ * A backend declared in the file (plan, "Configuration and security"):
+ * reconciled at every start, read-only in the app, tombstoned when removed.
+ * Its settings are checked against its kind at startup, where the kinds are
+ * known; a wrong one stops the start with a sentence naming it.
+ */
+export const ConfigBackendSchema = Type.Object({
+  id: Type.String({
+    pattern: '^[a-z0-9][a-z0-9_-]{0,63}$',
+    description:
+      'A stable id: lowercase letters, digits, - and _. Jobs name it, so keep it when the URL changes.',
+  }),
+  kind: Type.String({ minLength: 1, description: '`sdcpp` (one sd-server) or `lemonade`.' }),
+  baseUrl: Type.String({
+    pattern: '^https?://\\S+$',
+    description: 'Where it answers, e.g. http://127.0.0.1:1234.',
+  }),
+  name: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
+  settings: Type.Optional(
+    Type.Record(Type.String(), Type.Unknown(), {
+      description: "The kind's settings (GET /api/v1/backend-kinds describes them).",
+    }),
+  ),
+  secretsFromEnv: Type.Optional(
+    Type.Record(Type.String(), Type.String({ pattern: '^[A-Za-z_][A-Za-z0-9_]*$' }), {
+      description:
+        'Each secret\'s environment variable, e.g. {"apiKey": "LEMONADE_API_KEY"}, so the file holds no secret.',
+    }),
+  ),
+  resourceGroup: Type.Optional(
+    Type.String({
+      minLength: 1,
+      description: "Backends in one group share its slots. Default: the URL's host.",
+    }),
+  ),
+  concurrency: Type.Optional(
+    Type.Integer({ minimum: 1, maximum: 64, description: 'Jobs it runs at once. Default 1.' }),
+  ),
+});
+export type ConfigBackend = Static<typeof ConfigBackendSchema>;
+
 export const ConfigSchema = Type.Object({
   host: Type.String({
     minLength: 1,
@@ -100,6 +141,11 @@ export const ConfigSchema = Type.Object({
       'Extra Origins to accept (scheme://host[:port]), e.g. http://localhost:5173 for the Vite dev server.',
   }),
   log: Type.Object({ level: logLevel({ default: 'info' }) }, { default: {} }),
+  backends: Type.Array(ConfigBackendSchema, {
+    default: [],
+    description:
+      'Backends to serve, each with a stable id. Reconciled at every start; one removed is tombstoned. Backends can also be added in the app.',
+  }),
   limits: Type.Object(
     {
       maxUploadMb: Type.Integer({
@@ -130,6 +176,7 @@ export const DEFAULT_CONFIG: LanternConfig = deepFreeze({
   allowedHosts: [],
   allowedOrigins: [],
   log: { level: 'info' },
+  backends: [],
   limits: { maxUploadMb: 50 },
 });
 

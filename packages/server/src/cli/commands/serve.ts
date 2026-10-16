@@ -43,13 +43,18 @@ import {
 } from '../../config/app-root.js';
 import type { ResolvedConfig } from '../../config/schema.js';
 import {
+  BackendConfigError,
+  BackendRegistry,
+  createBackendKinds,
+} from '../../engine/backends/index.js';
+import {
   devBackend,
+  devFixedModel,
   devMockProfile,
   DEV_MODEL_ID,
   isDevMode,
-  startupModelCatalog,
 } from '../../engine/catalog/index.js';
-import { EventBus, JobEngine, StaticBindings } from '../../engine/jobs/index.js';
+import { EventBus, JobEngine } from '../../engine/jobs/index.js';
 import type { MockProfile } from '../../adapters/mock/index.js';
 import { builtinProfiles } from '../../engine/profiles/index.js';
 import { createResolver } from '../../engine/resolver/index.js';
@@ -348,17 +353,37 @@ export function createServeCommand(options: ServeOptions = {}): Command {
       // Profiles load (and are validated) here, so a bad built-in fails the start.
       const profiles = builtinProfiles();
       const devProfile = devProfileOf(context.env);
-      // Phase 5 replaces the in-memory catalog and bindings with the install database.
-      const models = startupModelCatalog(context.env, profiles);
       const resolver = createResolver({ ajv: createValidator(), profiles });
       const events = new EventBus(processId);
-      const bindings =
-        devProfile === null ? [] : [(await devBackend({ profile: devProfile })).binding];
+      // The backend registry is the model catalog and the bindings: the
+      // install database's backends, models and routes, plus the development
+      // model in memory under LANTERN_DEV=1.
+      const registry = new BackendRegistry({
+        db: install.db,
+        profiles,
+        events,
+        log: storeLog,
+        kinds: createBackendKinds(),
+        env: context.env,
+        fixed:
+          devProfile === null
+            ? []
+            : [devFixedModel((await devBackend({ profile: devProfile })).binding, devProfile)],
+      });
+      // Stopped after the engine (the closers run in reverse), before the install store.
+      closers.push({ name: 'backend registry', close: () => registry.stop() });
+      try {
+        // Reconciles lantern.json's backends and waits a few seconds at most for them to answer.
+        await registry.start({ config: config.backends });
+      } catch (error) {
+        if (error instanceof BackendConfigError) throw new UsageError(error.message);
+        throw error;
+      }
       const engine = new JobEngine({
         libraries,
-        models,
+        models: registry,
         resolver,
-        bindings: new StaticBindings(bindings),
+        bindings: registry,
         events,
         log: storeLog,
       });
@@ -372,7 +397,8 @@ export function createServeCommand(options: ServeOptions = {}): Command {
             cookieSecure: config.auth.cookieSecure,
           }),
           libraries,
-          models,
+          models: registry,
+          backends: registry,
           resolver,
           engine,
           events,

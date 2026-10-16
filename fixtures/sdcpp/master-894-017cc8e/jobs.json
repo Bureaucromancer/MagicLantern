@@ -1,0 +1,219 @@
+{
+  "submit_accepted": {
+    "request": {
+      "method": "POST",
+      "path": "/sdcpp/v1/img_gen"
+    },
+    "response": {
+      "status": 202,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "queued",
+        "created": 1760500267,
+        "poll_url": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+      }
+    }
+  },
+  "submit_queue_full": {
+    "request": {
+      "method": "POST",
+      "path": "/sdcpp/v1/img_gen"
+    },
+    "response": {
+      "status": 429,
+      "body": {
+        "error": "job queue is full"
+      }
+    }
+  },
+  "submit_invalid": {
+    "request": {
+      "method": "POST",
+      "path": "/sdcpp/v1/img_gen"
+    },
+    "response": {
+      "status": 400,
+      "body": {
+        "error": "invalid generation parameters"
+      }
+    }
+  },
+  "job_queued": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "queued",
+        "created": 1760500267,
+        "started": null,
+        "completed": null,
+        "queue_position": 2,
+        "result": null,
+        "error": null
+      }
+    }
+  },
+  "job_generating": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "generating",
+        "created": 1760500267,
+        "started": 1760500270,
+        "completed": null,
+        "queue_position": 0,
+        "result": null,
+        "error": null
+      }
+    }
+  },
+  "job_completed": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "completed",
+        "created": 1760500267,
+        "started": 1760500270,
+        "completed": 1760500282,
+        "queue_position": 0,
+        "result": {
+          "output_format": "png",
+          "images": [
+            {
+              "index": 0,
+              "b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAFM3RFWHRwYXJhbWV0ZXJzAGEgbGlnaHRob3VzZSBhdCBkdXNrLCBTRENQUDogbm90IHRoaXMgb25lCk5lZ2F0aXZlIHByb21wdDogYmx1cnJ5ClN0ZXBzOiAyMCwgQ0ZHIHNjYWxlOiA3LjAwMDAwMCwgR3VpZGFuY2U6IDMuNTAwMDAwLCBFdGE6IGluZiwgU2VlZDogMTIzNCwgU2l6ZTogMTAyNHgxMDI0LCBNb2RlbDogc2RfeGxfYmFzZV8xLjAuc2FmZXRlbnNvcnMsIFJORzogY3VkYSwgU2FtcGxlcjogZXVsZXJfYSBkaXNjcmV0ZSwgVmVyc2lvbjogc3RhYmxlLWRpZmZ1c2lvbi5jcHAsIFNEQ1BQOiB7InNjaGVtYSI6InNkY3BwLmltYWdlLnBhcmFtcy92MSIsIm1vZGUiOiJpbWdfZ2VuIiwiZ2VuZXJhdG9yIjp7Im5hbWUiOiJzdGFibGUtZGlmZnVzaW9uLmNwcCIsInZlcnNpb24iOiJtYXN0ZXItODk0LTAxN2NjOGUiLCJjb21taXQiOiIwMTdjYzhlIn0sInNlZWQiOjEyMzQsIndpZHRoIjoxMDI0LCJoZWlnaHQiOjEwMjQsInByb21wdCI6eyJwb3NpdGl2ZSI6ImEgbGlnaHRob3VzZSBhdCBkdXNrLCBTRENQUDogbm90IHRoaXMgb25lIiwibmVnYXRpdmUiOiJibHVycnkifSwic2FtcGxpbmciOnsic3RlcHMiOjIwLCJldGEiOm51bGwsInNoaWZ0ZWRfdGltZXN0ZXAiOjAsImZsb3dfc2hpZnQiOm51bGwsImV4dHJhX3NhbXBsZV9hcmdzIjoiIiwiZ3VpZGFuY2UiOnsidHh0X2NmZyI6NywiaW1nX2NmZyI6bnVsbCwiZGlzdGlsbGVkX2d1aWRhbmNlIjozLjUsInNsZyI6eyJzY2FsZSI6MCwibGF5ZXJzIjpbNyw4LDldLCJzdGFydCI6MC4wMDk5OTk5OTk3NzY0ODI1ODIsImVuZCI6MC4yMDAwMDAwMDI5ODAyMzIyNH19LCJtZXRob2QiOiJldWxlcl9hIiwic2NoZWR1bGVyIjoiZGlzY3JldGUiLCJjdXN0b21fc2lnbWFzIjpbXX0sIm1vZGVscyI6eyJtb2RlbCI6InNkX3hsX2Jhc2VfMS4wLnNhZmV0ZW5zb3JzIn0sImNsaXBfc2tpcCI6LTEsInN0cmVuZ3RoIjowLjc1LCJjb250cm9sX3N0cmVuZ3RoIjowLjg5OTk5OTk3NjE1ODE0MjEsImlwX2FkYXB0ZXJfc3RyZW5ndGgiOjEsInJlZl9pbWFnZV9hcmdzIjoiIiwiaW1hZ2VfcHJlcHJvY2VzcyI6IiIsImluY3JlYXNlX3JlZl9pbmRleCI6ZmFsc2UsInJuZyI6ImN1ZGEiLCJsb3JhcyI6W3sibmFtZSI6ImZpbG0tZ3JhaW4iLCJtdWx0aXBsaWVyIjowLjYwMDAwMDAyMzg0MTg1NzksImlzX2hpZ2hfbm9pc2UiOmZhbHNlfV0sInZhZV90aWxpbmciOnsiZW5hYmxlZCI6dHJ1ZSwidGVtcG9yYWxfdGlsaW5nIjpmYWxzZSwidGlsZV9zaXplX3giOjAsInRpbGVfc2l6ZV95IjowLCJ0YXJnZXRfb3ZlcmxhcCI6MC41LCJyZWxfc2l6ZV94IjowLCJyZWxfc2l6ZV95IjowLCJleHRyYV90aWxpbmdfYXJncyI6IiJ9fcMLCg0AAADTSURBVHicAcgAN/8ADQcF/vufD9ESriINUd5B+kUIJspEuqx+ADyN76xeHianIEf5L5isquFiNBsnFHv+0gC6M86Exy2lsZBJvGZxqs3Nr/Fb7D/5d2QAfZuANPZp3HUfc8EdHXgJaeBJB5kHNdybAAeaXoW4omG862KdoWYzSTFQQvpMLp+mrgDmNqT2v9epol4uzBDJPH+XR4ZRvF1OI7wA4Wac8YofMpG6BObgP7bkIsrgRJXsgdwEAEyCxa9s4ucSGd76BtSA7kVzK8+xf9gRs5duYRNv4/pDAAAAAElFTkSuQmCC"
+            },
+            {
+              "index": 1,
+              "b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAFM3RFWHRwYXJhbWV0ZXJzAGEgbGlnaHRob3VzZSBhdCBkdXNrLCBTRENQUDogbm90IHRoaXMgb25lCk5lZ2F0aXZlIHByb21wdDogYmx1cnJ5ClN0ZXBzOiAyMCwgQ0ZHIHNjYWxlOiA3LjAwMDAwMCwgR3VpZGFuY2U6IDMuNTAwMDAwLCBFdGE6IGluZiwgU2VlZDogMTIzNSwgU2l6ZTogMTAyNHgxMDI0LCBNb2RlbDogc2RfeGxfYmFzZV8xLjAuc2FmZXRlbnNvcnMsIFJORzogY3VkYSwgU2FtcGxlcjogZXVsZXJfYSBkaXNjcmV0ZSwgVmVyc2lvbjogc3RhYmxlLWRpZmZ1c2lvbi5jcHAsIFNEQ1BQOiB7InNjaGVtYSI6InNkY3BwLmltYWdlLnBhcmFtcy92MSIsIm1vZGUiOiJpbWdfZ2VuIiwiZ2VuZXJhdG9yIjp7Im5hbWUiOiJzdGFibGUtZGlmZnVzaW9uLmNwcCIsInZlcnNpb24iOiJtYXN0ZXItODk0LTAxN2NjOGUiLCJjb21taXQiOiIwMTdjYzhlIn0sInNlZWQiOjEyMzUsIndpZHRoIjoxMDI0LCJoZWlnaHQiOjEwMjQsInByb21wdCI6eyJwb3NpdGl2ZSI6ImEgbGlnaHRob3VzZSBhdCBkdXNrLCBTRENQUDogbm90IHRoaXMgb25lIiwibmVnYXRpdmUiOiJibHVycnkifSwic2FtcGxpbmciOnsic3RlcHMiOjIwLCJldGEiOm51bGwsInNoaWZ0ZWRfdGltZXN0ZXAiOjAsImZsb3dfc2hpZnQiOm51bGwsImV4dHJhX3NhbXBsZV9hcmdzIjoiIiwiZ3VpZGFuY2UiOnsidHh0X2NmZyI6NywiaW1nX2NmZyI6bnVsbCwiZGlzdGlsbGVkX2d1aWRhbmNlIjozLjUsInNsZyI6eyJzY2FsZSI6MCwibGF5ZXJzIjpbNyw4LDldLCJzdGFydCI6MC4wMDk5OTk5OTk3NzY0ODI1ODIsImVuZCI6MC4yMDAwMDAwMDI5ODAyMzIyNH19LCJtZXRob2QiOiJldWxlcl9hIiwic2NoZWR1bGVyIjoiZGlzY3JldGUiLCJjdXN0b21fc2lnbWFzIjpbXX0sIm1vZGVscyI6eyJtb2RlbCI6InNkX3hsX2Jhc2VfMS4wLnNhZmV0ZW5zb3JzIn0sImNsaXBfc2tpcCI6LTEsInN0cmVuZ3RoIjowLjc1LCJjb250cm9sX3N0cmVuZ3RoIjowLjg5OTk5OTk3NjE1ODE0MjEsImlwX2FkYXB0ZXJfc3RyZW5ndGgiOjEsInJlZl9pbWFnZV9hcmdzIjoiIiwiaW1hZ2VfcHJlcHJvY2VzcyI6IiIsImluY3JlYXNlX3JlZl9pbmRleCI6ZmFsc2UsInJuZyI6ImN1ZGEiLCJsb3JhcyI6W3sibmFtZSI6ImZpbG0tZ3JhaW4iLCJtdWx0aXBsaWVyIjowLjYwMDAwMDAyMzg0MTg1NzksImlzX2hpZ2hfbm9pc2UiOmZhbHNlfV0sInZhZV90aWxpbmciOnsiZW5hYmxlZCI6dHJ1ZSwidGVtcG9yYWxfdGlsaW5nIjpmYWxzZSwidGlsZV9zaXplX3giOjAsInRpbGVfc2l6ZV95IjowLCJ0YXJnZXRfb3ZlcmxhcCI6MC41LCJyZWxfc2l6ZV94IjowLCJyZWxfc2l6ZV95IjowLCJleHRyYV90aWxpbmdfYXJncyI6IiJ9fSlD96AAAADTSURBVHicAcgAN/8AT8o1aetaJ7nwxCwqrL/HTqWQIDxKQowWAHGcPL/eSsKrsJT1SmJS9kwc5gPpaTmrPQC3GPt3kWrZ1AyTA9e3pzwT0+NII675L6YAVXf/1+KIrPTLos/HbwArxRO86Gh61+5aADUF4tJrFqqzEm0zjN912Kb3DqQVDqsL6QCYFi1fCbDmWXNXl6ADMsfHNwDC+IevHLcASh0Xa6+SC24SUbj0lA1oDlPscm6zHQf0AFy7LjwOYdXl15ykvaeJZuKOTc/ERdryqQojYS4WWU7jAAAAAElFTkSuQmCC"
+            }
+          ]
+        },
+        "error": null
+      }
+    }
+  },
+  "job_failed": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "failed",
+        "created": 1760500267,
+        "started": 1760500270,
+        "completed": 1760500271,
+        "queue_position": 0,
+        "result": null,
+        "error": {
+          "code": "generation_failed",
+          "message": "generate_image returned no results"
+        }
+      }
+    }
+  },
+  "job_cancelled": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "cancelled",
+        "created": 1760500267,
+        "started": null,
+        "completed": 1760500269,
+        "queue_position": 0,
+        "result": null,
+        "error": {
+          "code": "cancelled",
+          "message": "job cancelled by client"
+        }
+      }
+    }
+  },
+  "job_expired": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 410,
+      "body": {
+        "error": "job expired"
+      }
+    }
+  },
+  "job_not_found": {
+    "request": {
+      "method": "GET",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001"
+    },
+    "response": {
+      "status": 404,
+      "body": {
+        "error": "job not found"
+      }
+    }
+  },
+  "cancel_queued": {
+    "request": {
+      "method": "POST",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001/cancel"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "id": "job_68ef1a2b_00000001",
+        "kind": "img_gen",
+        "status": "cancelled",
+        "created": 1760500267,
+        "started": null,
+        "completed": 1760500269,
+        "queue_position": 0,
+        "result": null,
+        "error": {
+          "code": "cancelled",
+          "message": "job cancelled by client"
+        }
+      }
+    }
+  },
+  "cancel_generating": {
+    "request": {
+      "method": "POST",
+      "path": "/sdcpp/v1/jobs/job_68ef1a2b_00000001/cancel"
+    },
+    "response": {
+      "status": 409,
+      "body": {
+        "error": "job is currently generating and cannot be interrupted yet"
+      }
+    }
+  }
+}

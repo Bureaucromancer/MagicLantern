@@ -2,11 +2,11 @@
 // Copyright (C) 2026 Magic Lantern contributors
 
 /**
- * The development catalog, served with `LANTERN_DEV=1` (D6): one SDXL model on
+ * The development model, served with `LANTERN_DEV=1` (D6): one SDXL model on
  * one route of the mock backend kind (adapters/mock), so jobs run end to end
- * before any real backend exists. Phase 5 replaces the catalog with the
- * install database; until then this is the only model a development daemon
- * knows. A normal start has no models.
+ * with no real backend. The backend registry holds it in memory, beside what
+ * the install database registers, so a development data directory keeps no
+ * trace of it.
  */
 
 import {
@@ -20,6 +20,7 @@ import {
   type MockProfile,
   type MockSettings,
 } from '../../adapters/mock/index.js';
+import type { FixedModel } from '../backends/index.js';
 import type { RouteBinding } from '../jobs/bindings.js';
 import type { ProfileRegistry } from '../profiles/index.js';
 import { type CatalogModel, InMemoryModelCatalog } from './catalog.js';
@@ -59,6 +60,24 @@ export function devModel(profile: MockProfile = 'basic'): CatalogModel {
 
 /** The development model under the default profile. */
 export const DEV_MODEL: CatalogModel = devModel();
+
+export const DEV_MODEL_NAME = 'Development SDXL (mock)';
+export const DEV_BACKEND_NAME = 'Development mock';
+
+/**
+ * The development model as the registry holds it: in memory, served by the
+ * mock through `binding`.
+ *
+ * @param binding the mock's route binding, from {@link devBackend}
+ * @param profile the mock's behaviour profile, which shapes the descriptor's `control`
+ */
+export function devFixedModel(binding: RouteBinding, profile: MockProfile = 'basic'): FixedModel {
+  return {
+    model: devModel(profile),
+    name: DEV_MODEL_NAME,
+    backend: { id: DEV_BACKEND_ID, kind: 'mock', name: DEV_BACKEND_NAME, binding },
+  };
+}
 
 /**
  * The mock profile a development daemon runs (`LANTERN_DEV_MOCK_PROFILE`),

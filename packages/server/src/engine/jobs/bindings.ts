@@ -4,9 +4,9 @@
 /**
  * Which adapter serves each route, and the resource group it runs in (A12).
  *
- * A seam like the model catalog: Phase 5 builds it from the install
- * database's `backends` and `routes`; until then it is a list given at
- * startup (the mock under `LANTERN_DEV=1`, adapters in tests).
+ * A seam like the model catalog: the backend registry (engine/backends)
+ * builds it from the install database's `backends` and `routes`; tests give
+ * a list ({@link StaticBindings}).
  *
  * One slot per resource group, keyed by GPU host and defaulting to the
  * backend, so a standalone sd-server and a Lemonade on the same box share
@@ -19,7 +19,10 @@ import type { Adapter } from '../../adapters/shared/index.js';
 export interface RouteBinding {
   readonly routeId: string;
   readonly backendId: string;
+  /** The kind of the adapter that serves the route (`sdcpp`), whichever backend found it. */
   readonly backendKind: string;
+  /** The manager that discovered the route (L1), and its own name for the model. */
+  readonly manager?: { readonly kind: string; readonly ref: string };
   /** The backend's base URL, as its handles' instance fingerprints carry it. */
   readonly baseUrl: string;
   readonly adapter: Adapter;

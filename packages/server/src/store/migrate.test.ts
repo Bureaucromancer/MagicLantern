@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { readLease } from './lease.js';
 import { migrateAll } from './migrate.js';
-import { LIBRARY_SCHEMA_VERSION, LIBRARY_STEPS } from './migrations.js';
+import { INSTALL_SCHEMA_VERSION, LIBRARY_SCHEMA_VERSION, LIBRARY_STEPS } from './migrations.js';
 import { dataPaths } from './paths.js';
 import { vacuumInto, type SnapshotOutcome, type SnapshotTask } from './snapshot-worker.js';
 import { collectingLog, removeDir, tempDir, testBoot, withDatabase } from './test-store.js';
@@ -26,7 +26,7 @@ describe('migrateAll', () => {
   it('sets up a new data directory the way a first start would, then closes everything', async () => {
     const report = await migrateAll(dataDir, { boot: testBoot(), log: collectingLog() });
 
-    expect(report.install).toEqual({ from: 0, to: 1, snapshot: null });
+    expect(report.install).toEqual({ from: 0, to: INSTALL_SCHEMA_VERSION, snapshot: null });
     expect(report.libraries).toEqual([
       expect.objectContaining({
         name: 'Library',
@@ -42,7 +42,11 @@ describe('migrateAll', () => {
   it('reports everything up to date the second time', async () => {
     await migrateAll(dataDir, { boot: testBoot(), log: collectingLog() });
     const report = await migrateAll(dataDir, { boot: testBoot(), log: collectingLog() });
-    expect(report.install).toEqual({ from: 1, to: 1, snapshot: null });
+    expect(report.install).toEqual({
+      from: INSTALL_SCHEMA_VERSION,
+      to: INSTALL_SCHEMA_VERSION,
+      snapshot: null,
+    });
     expect(report.libraries.map((library) => library.migration)).toEqual([
       { from: LIBRARY_SCHEMA_VERSION, to: LIBRARY_SCHEMA_VERSION, snapshot: null },
     ]);

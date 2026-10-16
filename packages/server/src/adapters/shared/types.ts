@@ -175,6 +175,56 @@ export interface Adapter {
   probe?(route: string): Promise<ProbeReport>;
 }
 
+// ---------------------------------------------------------------------------
+// Managers (L1)
+// ---------------------------------------------------------------------------
+
+/**
+ * A route a manager discovered: which adapter kind serves it and where. The
+ * adapter is handed `base_url` and nothing else, so it never knows which
+ * manager, if any, produced it (L1).
+ */
+export interface ManagedRoute {
+  /** The manager's own name for the model (Lemonade's model name, orchd's model id). */
+  readonly ref: string;
+  /** The adapter kind that serves it, e.g. `sdcpp`. */
+  readonly adapter: string;
+  /** Where that adapter reaches it. May carry a path (orchd's native proxy). */
+  readonly base_url: string;
+  /** Liveness and load state, from the manager (L2): never by asking the route itself. */
+  readonly health: HealthReport;
+  /**
+   * The model's identity, when the manager knows it (L4): orchd's covers
+   * every file. Absent: the adapter's `identify` answers, which for Lemonade
+   * asks the child, an instance that has its model loaded already.
+   */
+  readonly identity?: ModelIdentity;
+  /**
+   * The capabilities document the manager captured when the model last
+   * loaded (L3). Absent: the adapter fetches its own.
+   */
+  readonly capabilities?: unknown;
+  /** What else the manager says, for people (checkpoint, device, busy). */
+  readonly detail?: Readonly<Record<string, unknown>>;
+}
+
+/** What a manager reports: its own health, and every route it serves now. */
+export interface ManagerReport {
+  readonly health: HealthReport;
+  readonly routes: readonly ManagedRoute[];
+}
+
+/**
+ * A backend kind that discovers routes another adapter serves (L1): Lemonade
+ * first, orchd later. It reports; it never drives the manager's lifecycle,
+ * and nothing it does may cause a load (L3).
+ */
+export interface Manager {
+  /** Settings and secrets. Called once, before anything else. */
+  init(config: AdapterConfig): Promise<void>;
+  discover(signal?: AbortSignal): Promise<ManagerReport>;
+}
+
 /** The backend turned the job away before starting it (L5): it goes back to Lantern's queue. */
 export class RejectedBeforeStart extends Error {
   readonly retryAfterS: number | undefined;

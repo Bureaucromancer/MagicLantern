@@ -19,6 +19,7 @@ import {
   type ValidationIssue,
 } from '@bureaucromancer/lantern-schema';
 
+import { inputSizer } from '../engine/jobs/index.js';
 import type { ResolveFailure, Resolution } from '../engine/resolver/index.js';
 import { sendError, sendInvalid } from '../http/errors.js';
 import type { LanternApp } from '../http/types.js';
@@ -74,6 +75,7 @@ export function registerResolveRoutes(app: LanternApp): void {
         request: body.request,
         model,
         ...(body.route === undefined ? {} : { route: body.route }),
+        inputSize: inputSizer(libraries, request.params.lib),
       });
       if (!outcome.ok) return sendInvalid(reply, failureIssues(outcome.failure, model.id), 'body');
       return toResolveResponse(outcome.resolution);

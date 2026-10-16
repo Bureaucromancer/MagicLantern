@@ -14,6 +14,7 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
 
 import type { LibraryStatus } from '@bureaucromancer/lantern-schema';
 import type { InjectOptions, LightMyRequestResponse } from 'fastify';
@@ -27,12 +28,14 @@ import type { MachineNames } from './http/security.js';
 import type { LanternApp } from './http/types.js';
 import type { MockAdapter, MockSettings } from './adapters/mock/index.js';
 import {
-  type CatalogModel,
-  devBackend,
-  devModel,
-  InMemoryModelCatalog,
-} from './engine/catalog/index.js';
-import { EventBus, JobEngine, StaticBindings, type RouteBinding } from './engine/jobs/index.js';
+  BackendRegistry,
+  createBackendKinds,
+  type BackendKinds,
+  type ConfigBackend,
+  type FixedModel,
+} from './engine/backends/index.js';
+import { type CatalogModel, devBackend, devFixedModel } from './engine/catalog/index.js';
+import { EventBus, JobEngine } from './engine/jobs/index.js';
 import { builtinProfiles } from './engine/profiles/index.js';
 import { createResolver, type SeedSource } from './engine/resolver/index.js';
 import { loggerOptions, type LogDestination } from './logging.js';
@@ -42,7 +45,7 @@ import { newId } from './ids.js';
 import { openInstallStore } from './store/install.js';
 import { openLibraryRegistry } from './store/libraries.js';
 import { readSecrets, writeSecrets } from './store/secrets.js';
-import { testBoot } from './store/test-store.js';
+import { memoryInstallDb, testBoot } from './store/test-store.js';
 import type { InstallStore, LibraryRecord, LibraryRegistry, StoreLog } from './store/types.js';
 
 export const TEST_PORT = 7600;
@@ -117,37 +120,48 @@ export function libraryRecord(
 }
 
 /**
- * The model services over an in-memory catalog of the given models (none by
- * default) and the built-in profiles, with a job engine over them that is not
- * started (so it queues and never dispatches) unless the caller starts it.
- *
- * @param models the models the catalog holds
- * @param drawSeed a deterministic seed source, for snapshot tests
- * @param engineDeps the libraries and bindings the engine runs on
+ * The model services an app needs, around a backend registry: `models` are
+ * held in memory with no backend (the resolver's view of them), `fixed`
+ * models may bring a backend (the mock), and the registry's own rows live in
+ * `db`, an install database in memory unless a test gives one.
  */
 export function testModelServices(
   models: readonly CatalogModel[] = [],
   drawSeed?: SeedSource,
-  engineDeps: { libraries?: LibraryRegistry; bindings?: readonly RouteBinding[] } = {},
-): Pick<AppServices, 'models' | 'resolver' | 'engine' | 'events'> {
+  engineDeps: {
+    libraries?: LibraryRegistry;
+    fixed?: readonly FixedModel[];
+    db?: DatabaseSync;
+    kinds?: BackendKinds;
+  } = {},
+): Pick<AppServices, 'models' | 'backends' | 'resolver' | 'engine' | 'events'> {
   const profiles = builtinProfiles();
-  const catalog = new InMemoryModelCatalog(models, profiles);
+  const events = new EventBus('boot_test');
+  const registry = new BackendRegistry({
+    db: engineDeps.db ?? memoryInstallDb(),
+    profiles,
+    events,
+    log: silentStoreLog(),
+    kinds: engineDeps.kinds ?? createBackendKinds(),
+    fixed: [...models.map((model) => ({ model, name: model.id })), ...(engineDeps.fixed ?? [])],
+    startupWaitMs: 2000,
+    createWaitMs: 2000,
+  });
   const resolver = createResolver({
     ajv: createValidator(),
     profiles,
     ...(drawSeed === undefined ? {} : { drawSeed }),
   });
-  const events = new EventBus('boot_test');
   const engine = new JobEngine({
     libraries: engineDeps.libraries ?? fakeLibraries(),
-    models: catalog,
+    models: registry,
     resolver,
-    bindings: new StaticBindings(engineDeps.bindings ?? []),
+    bindings: registry,
     events,
     log: silentStoreLog(),
     pollMs: 2,
   });
-  return { models: catalog, resolver, engine, events };
+  return { models: registry, backends: registry, resolver, engine, events };
 }
 
 /** Writes a password record the way `lantern set-password` does. */
@@ -188,6 +202,11 @@ export interface TestAppOptions {
    * and start the engine (stopped with the app).
    */
   readonly mock?: MockSettings;
+  /**
+   * Starts the backend registry with these config backends and kinds (a
+   * `fetch` to fake backends with). Without it the registry is not started.
+   */
+  readonly backends?: { readonly config?: readonly ConfigBackend[]; readonly kinds?: BackendKinds };
 }
 
 type RequestOptions = Omit<InjectOptions, 'cookies'> & {
@@ -198,7 +217,7 @@ type RequestOptions = Omit<InjectOptions, 'cookies'> & {
 export interface TestApp {
   readonly app: LanternApp;
   readonly dataDir: string;
-  readonly services: Pick<AppServices, 'engine' | 'events' | 'models'>;
+  readonly services: Pick<AppServices, 'engine' | 'events' | 'models' | 'backends'>;
   /** The mock backend, with `mock`. */
   readonly adapter: MockAdapter | null;
   /** The registry the app serves. */
@@ -230,17 +249,25 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
     libraries = await openLibraryRegistry(install, dataDir, { log: silentStoreLog() });
   }
 
-  let models = options.models ?? [];
-  let bindings: RouteBinding[] = [];
+  const fixed: FixedModel[] = [];
   let adapter: MockAdapter | null = null;
   if (options.mock !== undefined) {
     const backend = await devBackend({ stepMs: 1, ...options.mock });
     adapter = backend.adapter;
-    bindings = [backend.binding];
-    models = [...models, devModel(options.mock.profile)];
+    fixed.push(devFixedModel(backend.binding, options.mock.profile));
   }
-  const modelServices = testModelServices(models, options.drawSeed, { libraries, bindings });
-  if (options.mock !== undefined) await modelServices.engine.start();
+  const modelServices = testModelServices(options.models ?? [], options.drawSeed, {
+    libraries,
+    fixed,
+    ...(install === null ? {} : { db: install.db }),
+    ...(options.backends?.kinds === undefined ? {} : { kinds: options.backends.kinds }),
+  });
+  if (options.backends !== undefined) {
+    await modelServices.backends.start({ config: options.backends.config ?? [] });
+  }
+  if (options.mock !== undefined || options.backends !== undefined) {
+    await modelServices.engine.start();
+  }
 
   const app = await buildApp(
     {
@@ -304,6 +331,7 @@ export async function makeTestApp(options: TestAppOptions = {}): Promise<TestApp
     async close() {
       await app.close();
       await modelServices.engine.stop();
+      await modelServices.backends.stop();
       if (install !== null) {
         libraries.close();
         install.close();

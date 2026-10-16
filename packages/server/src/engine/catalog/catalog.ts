@@ -4,13 +4,12 @@
 /**
  * The model catalog: where the resolver finds a model and its routes.
  *
- * A seam for Phase 2. Models, backends and routes have no tables until
- * Phase 5, which replaces the in-memory implementation here with one over the
- * install database (`models`, `routes`, `backends`), fed by adapters'
- * `describe()` and `health()`. The interface is what the HTTP layer and the
- * job engine depend on, so that swap touches nothing else.
+ * The backend registry (engine/backends) implements it over the install
+ * database (`models`, `routes`, `backends`), fed by adapters' `describe()`
+ * and health; the in-memory catalog here serves tests. The interface is what
+ * the HTTP layer and the job engine depend on.
  *
- * The in-memory catalog does now what the real one will: each route's
+ * Both merge the same way, through {@link catalogEntry}: each route's
  * effective descriptor is its `describe()` result with the probe, override
  * and profile layers merged (A6), the profile layer being the model profile's
  * constraints per mode, and a mode the profile does not support removed.
@@ -38,7 +37,7 @@ import type {
   RouteCandidate,
 } from '../resolver/index.js';
 
-/** Where the resolver finds models. Phase 5 backs it with the install database. */
+/** Where the resolver finds models: the backend registry, or an in-memory catalog in tests. */
 export interface ModelCatalog {
   /** A model and its routes, or `undefined` for an unknown id. */
   get(id: string): ResolverModel | undefined;

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "family": "generic",
+  "name": "Generic (backend defaults)",
+  "licence": {
+    "id": "LicenseRef-Unknown",
+    "name": "Unknown: the model's own",
+    "commercial_use": false,
+    "source": "unconfirmed",
+    "note": "Lantern cannot know the licence of a model no profile describes. Check the model's own; until then commercial use is shown as not allowed."
+  },
+  "prompt": {
+    "dialect": "unconfirmed",
+    "source": "unconfirmed",
+    "note": "Nothing is known about the model, so nothing is said about how to prompt it."
+  },
+  "negative_prompt": { "behaviour": "unconfirmed", "source": "unconfirmed" },
+  "resolution": {
+    "multiple_of": 8,
+    "source": "sdcpp",
+    "note": "8 is the latent downscale of the VAEs sd.cpp runs, the smallest multiple any of its image models needs; a family's own profile may need 16 or 64."
+  },
+  "modes": {
+    "txt2img": {},
+    "img2img": {},
+    "inpaint": {}
+  },
+  "sources": [
+    {
+      "id": "sdcpp",
+      "url": "https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/sd.md",
+      "title": "stable-diffusion.cpp: SD1.x, SD2.x and SDXL",
+      "checked": "2026-10-15"
+    }
+  ],
+  "notes": [
+    "For a model no profile describes, or one whose family Lantern could not guess when it was added (A26): every default is the route's own, which for sd-server is its command line, and nothing is narrowed beyond what the route says.",
+    "Edit is left out: a backend may take reference images whatever its model, and a model that cannot use them ignores them. Choose the model's family to edit.",
+    "Inpaint is listed because sd.cpp applies a mask to any image model; a family's profile may leave it out where the base model needs a separate inpainting checkpoint."
+  ]
+}

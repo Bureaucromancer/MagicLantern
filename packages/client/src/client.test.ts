@@ -619,3 +619,65 @@ describe('jobs and events', () => {
     expect((await apiErrorOf(client.streamEvents(() => undefined))).code).toBe('unauthenticated');
   });
 });
+
+describe('backends, models and profiles', () => {
+  it('reach every route, with JSON bodies where there are any', async () => {
+    const backend = { id: 'be_01JA2B3C4D5E6F7G8H9JKMNPQR', routes: [] };
+    const { client, fake } = clientAnswering(
+      json(200, { kinds: [] }),
+      json(200, { candidates: [], probes: [] }),
+      json(200, { candidates: [], probes: [] }),
+      json(200, { backends: [] }),
+      json(201, backend),
+      json(200, backend),
+      json(200, { models: [] }),
+      json(200, { id: 'mdl_a', routes: [] }),
+      json(200, { id: 'mdl_a', routes: [] }),
+      json(200, { profiles: [] }),
+    );
+    await client.backendKinds();
+    await client.detectBackends();
+    await client.detectBackends({ url: 'http://127.0.0.1:1234' });
+    await client.listBackends();
+    await client.createBackend({ kind: 'sdcpp', base_url: 'http://127.0.0.1:1234' });
+    await client.refreshBackend(backend.id);
+    await client.listModels();
+    await client.getModel('mdl_a');
+    await client.updateModel('mdl_a', { family: 'generic' });
+    await client.listProfiles();
+    expect(fake.requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+      `GET ${BASE}/api/v1/backend-kinds`,
+      `POST ${BASE}/api/v1/backends/detect`,
+      `POST ${BASE}/api/v1/backends/detect`,
+      `GET ${BASE}/api/v1/backends`,
+      `POST ${BASE}/api/v1/backends`,
+      `POST ${BASE}/api/v1/backends/${backend.id}/refresh`,
+      `GET ${BASE}/api/v1/models`,
+      `GET ${BASE}/api/v1/models/mdl_a`,
+      `PATCH ${BASE}/api/v1/models/mdl_a`,
+      `GET ${BASE}/api/v1/profiles`,
+    ]);
+    expect(fake.requests.map((request) => request.body)).toEqual([
+      undefined,
+      '{}',
+      '{"url":"http://127.0.0.1:1234"}',
+      undefined,
+      '{"kind":"sdcpp","base_url":"http://127.0.0.1:1234"}',
+      undefined,
+      undefined,
+      undefined,
+      '{"family":"generic"}',
+      undefined,
+    ]);
+  });
+
+  it('rejects a backend already registered with conflict', async () => {
+    const { client } = clientAnswering(
+      json(409, { error: 'conflict', message: 'Already registered.' }),
+    );
+    const error = await apiErrorOf(
+      client.createBackend({ kind: 'sdcpp', base_url: 'http://127.0.0.1:1234' }),
+    );
+    expect(error.code).toBe(ErrorCodes.conflict);
+  });
+});

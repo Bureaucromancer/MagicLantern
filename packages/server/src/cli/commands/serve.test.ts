@@ -18,6 +18,7 @@ import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loggerOptions } from '../../logging.js';
+import { memoryInstallDb } from '../../store/test-store.js';
 import type { InstallStore } from '../../store/types.js';
 import { captureLog, fakeLibraries, tempRoot, testConfig } from '../../test-app.js';
 import { UsageError, type CommandContext, type SignalSource } from '../args.js';
@@ -58,7 +59,8 @@ function recordingStore(events: string[], overrides: Partial<ServeStore> = {}): 
       events.push(`open install as ${boot.processId.slice(0, 5)}`);
       log.info('Opened the install database.', { schemaVersion: 1 });
       const install: InstallStore = {
-        db: undefined as unknown as InstallStore['db'],
+        // The backend registry keeps its rows here; the rest of this store is a recording.
+        db: memoryInstallDb(),
         schemaVersion: 1,
         heartbeat: () => events.push('heartbeat'),
         close: () => events.push('close install'),

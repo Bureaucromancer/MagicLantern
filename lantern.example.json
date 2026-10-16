@@ -68,6 +68,19 @@
     "level": "info"
   },
 
+  // Backends to serve. Each needs a stable "id" (jobs name it: keep it when the
+  // URL changes), a "kind" and a "baseUrl". They are reconciled at every start
+  // and read-only in the app; one removed from this list is tombstoned. Backends
+  // can also be added in the app, which is how autodetect adds them. For example:
+  //   { "id": "homelab", "kind": "lemonade", "baseUrl": "http://127.0.0.1:13305" }
+  //   { "id": "sdxl", "kind": "sdcpp", "baseUrl": "http://127.0.0.1:1234",
+  //     "settings": { "preview": "proj" } }
+  // Optional: "name"; "settings" (GET /api/v1/backend-kinds describes each
+  // kind's); "resourceGroup" (backends in one group take turns on its GPU;
+  // default: the URL's host); "concurrency" (default 1); and "secretsFromEnv",
+  // e.g. { "apiKey": "LEMONADE_API_KEY" }, so this file holds no secret.
+  "backends": [],
+
   "limits": {
     // The largest image an upload may send, in megabytes (1 to 1024). Images
     // are also refused above 8192 × 8192 pixels, whatever their file size.

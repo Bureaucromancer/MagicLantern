@@ -11,7 +11,26 @@
 
 import {
   CancelJobRoute,
+  CreateBackendRoute,
   CreateLibraryRoute,
+  DetectBackendsRoute,
+  GetModelRoute,
+  ListBackendKindsRoute,
+  ListBackendsRoute,
+  ListModelsRoute,
+  ListProfilesRoute,
+  PatchModelRoute,
+  RefreshBackendRoute,
+  type BackendKindListResponse,
+  type BackendListResponse,
+  type BackendSummary,
+  type CreateBackendBody,
+  type DetectBody,
+  type DetectResponse,
+  type ModelDetail,
+  type ModelListResponse,
+  type ModelPatchBody,
+  type ProfileListResponse,
   DeleteAssetRoute,
   EventsRoute,
   GetJobRoute,
@@ -192,6 +211,30 @@ export interface LanternClient {
     onEvent: (event: LanternStreamEvent) => void,
     options?: StreamOptions,
   ): Promise<string | null>;
+  /** `GET /api/v1/backend-kinds`: the kinds, each with JSON Schema for its settings (A26). */
+  backendKinds(options?: RequestOptions): Promise<BackendKindListResponse>;
+  /**
+   * `POST /api/v1/backends/detect`: probes each kind's default addresses, or
+   * `body.url` as every kind, and answers the proposal cards. Adds nothing.
+   */
+  detectBackends(body?: DetectBody, options?: RequestOptions): Promise<DetectResponse>;
+  /** `GET /api/v1/backends`. */
+  listBackends(options?: RequestOptions): Promise<BackendListResponse>;
+  /**
+   * `POST /api/v1/backends`: adds a backend with a proposal card's choices.
+   * Rejects with `invalid` (422) or `conflict` (409, already registered).
+   */
+  createBackend(body: CreateBackendBody, options?: RequestOptions): Promise<BackendSummary>;
+  /** `POST /api/v1/backends/{id}/refresh`: asks it again and re-reads its descriptors. */
+  refreshBackend(id: string, options?: RequestOptions): Promise<BackendSummary>;
+  /** `GET /api/v1/models`. */
+  listModels(options?: RequestOptions): Promise<ModelListResponse>;
+  /** `GET /api/v1/models/{id}`: with each route's effective descriptor, which the form renders. */
+  getModel(id: string, options?: RequestOptions): Promise<ModelDetail>;
+  /** `PATCH /api/v1/models/{id}`: its display name or its profile. */
+  updateModel(id: string, patch: ModelPatchBody, options?: RequestOptions): Promise<ModelDetail>;
+  /** `GET /api/v1/profiles`: for the profile picker. */
+  listProfiles(options?: RequestOptions): Promise<ProfileListResponse>;
 }
 
 export interface SubmitOptions extends RequestOptions {
@@ -524,6 +567,57 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
         `${GetQueueRoute.path}${library === undefined ? '' : `?library=${encodeURIComponent(library)}`}`,
         requestOptions,
       )) as QueueResponse,
+    backendKinds: async (requestOptions) =>
+      (await sendForBody(
+        ListBackendKindsRoute.method,
+        ListBackendKindsRoute.path,
+        requestOptions,
+      )) as BackendKindListResponse,
+    detectBackends: async (body = {}, requestOptions) =>
+      (await sendForBody(DetectBackendsRoute.method, DetectBackendsRoute.path, requestOptions, {
+        json: body,
+      })) as DetectResponse,
+    listBackends: async (requestOptions) =>
+      (await sendForBody(
+        ListBackendsRoute.method,
+        ListBackendsRoute.path,
+        requestOptions,
+      )) as BackendListResponse,
+    createBackend: async (body, requestOptions) =>
+      (await sendForBody(CreateBackendRoute.method, CreateBackendRoute.path, requestOptions, {
+        json: body,
+      })) as BackendSummary,
+    refreshBackend: async (id, requestOptions) =>
+      (await sendForBody(
+        RefreshBackendRoute.method,
+        fillPath(RefreshBackendRoute.path, { id }),
+        requestOptions,
+      )) as BackendSummary,
+    listModels: async (requestOptions) =>
+      (await sendForBody(
+        ListModelsRoute.method,
+        ListModelsRoute.path,
+        requestOptions,
+      )) as ModelListResponse,
+    getModel: async (id, requestOptions) =>
+      (await sendForBody(
+        GetModelRoute.method,
+        fillPath(GetModelRoute.path, { id }),
+        requestOptions,
+      )) as ModelDetail,
+    updateModel: async (id, patch, requestOptions) =>
+      (await sendForBody(
+        PatchModelRoute.method,
+        fillPath(PatchModelRoute.path, { id }),
+        requestOptions,
+        { json: patch },
+      )) as ModelDetail,
+    listProfiles: async (requestOptions) =>
+      (await sendForBody(
+        ListProfilesRoute.method,
+        ListProfilesRoute.path,
+        requestOptions,
+      )) as ProfileListResponse,
     streamEvents: async (onEvent, streamOptions = {}) => {
       const headers = new Headers(extraHeaders);
       headers.set('accept', 'text/event-stream');

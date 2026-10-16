@@ -14,4 +14,5 @@ export {
   type SubmitOutcome,
 } from './engine.js';
 export { EVENT_BUFFER_SIZE, EventBus, type LanternEvent, type StampedEvent } from './events.js';
+export { inputSizer } from './sizes.js';
 export { canMove, JobTransitions, TRANSITIONS } from './transitions.js';

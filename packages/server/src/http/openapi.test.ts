@@ -64,13 +64,18 @@ async function specOf(routes: readonly api.RouteContract[]): Promise<Record<stri
 }
 
 /** Every key used anywhere under `value`, for "this keyword never appears" checks. */
-function keysIn(value: unknown, into = new Set<string>()): Set<string> {
+/**
+ * Every keyword in a schema tree. The names under `properties` are fields,
+ * not keywords (a descriptor's narrowing has a field called `enum`), so they
+ * are walked into but not counted.
+ */
+function keysIn(value: unknown, into = new Set<string>(), names = false): Set<string> {
   if (Array.isArray(value)) {
     for (const item of value) keysIn(item, into);
   } else if (typeof value === 'object' && value !== null) {
     for (const [key, child] of Object.entries(value)) {
-      into.add(key);
-      keysIn(child, into);
+      if (!names) into.add(key);
+      keysIn(child, into, !names && key === 'properties');
     }
   }
   return into;

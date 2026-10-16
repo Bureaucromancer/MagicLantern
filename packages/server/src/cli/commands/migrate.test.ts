@@ -8,7 +8,7 @@ import { PassThrough } from 'node:stream';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { LIBRARY_SCHEMA_VERSION } from '../../store/migrations.js';
+import { INSTALL_SCHEMA_VERSION, LIBRARY_SCHEMA_VERSION } from '../../store/migrations.js';
 import { dataPaths } from '../../store/paths.js';
 import {
   aProcessHoldingTheLock,
@@ -56,7 +56,7 @@ describe('migrateDataDir', () => {
     expect(await migrateDataDir(options(stdout))).toBe(0);
     expect(stdout.text()).toMatch(
       new RegExp(
-        `^lantern\\.db: created at schema 1\\.\\nLibrary "Library" \\(lib_[0-9A-Z]{26}\\): created at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
+        `^lantern\\.db: created at schema ${String(INSTALL_SCHEMA_VERSION)}\\.\\nLibrary "Library" \\(lib_[0-9A-Z]{26}\\): created at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
       ),
     );
     expect(lockIsFreeElsewhere(dataPaths(dataDir).lock)).toBe(true);
@@ -68,7 +68,7 @@ describe('migrateDataDir', () => {
     expect(await migrateDataDir(options(stdout))).toBe(0);
     expect(stdout.text()).toMatch(
       new RegExp(
-        `^lantern\\.db: up to date at schema 1\\.\\nLibrary .*: up to date at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
+        `^lantern\\.db: up to date at schema ${String(INSTALL_SCHEMA_VERSION)}\\.\\nLibrary .*: up to date at schema ${String(LIBRARY_SCHEMA_VERSION)}\\.\\n$`,
       ),
     );
   });
@@ -145,7 +145,9 @@ describe('runMigrate', () => {
   it('reads the config, migrates the data directory and exits 0', async () => {
     const stdout = capture();
     expect(await runMigrate(context(stdout, capture()))).toBe(0);
-    expect(stdout.text()).toContain('lantern.db: created at schema 1.');
+    expect(stdout.text()).toContain(
+      `lantern.db: created at schema ${String(INSTALL_SCHEMA_VERSION)}.`,
+    );
   });
 
   it('prints a refusal as one sentence and exits 1', async () => {
@@ -195,7 +197,9 @@ describe('runMigrate', () => {
     const stdout = capture();
     const relative = { ...context(stdout, capture(), { dataDir: 'elsewhere' }), cwd: root };
     expect(await runMigrate(relative)).toBe(0);
-    expect(stdout.text()).toContain('lantern.db: created at schema 1.');
+    expect(stdout.text()).toContain(
+      `lantern.db: created at schema ${String(INSTALL_SCHEMA_VERSION)}.`,
+    );
     // Created where cwd says, not in the test runner's own directory.
     await expect(stat(dataPaths(join(root, 'elsewhere')).installDb)).resolves.toBeDefined();
   });

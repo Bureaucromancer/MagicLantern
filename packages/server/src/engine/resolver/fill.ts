@@ -13,13 +13,19 @@
  * - `prompt.positive` and `sampling.seed`, which the request must give (the
  *   seed is drawn separately);
  * - experimental `subjects` and `style`;
- * - `geometry` when an `init` or `first_frame` input gives the size (A4): the
- *   size comes from the asset, which the asset store will measure (Phase 3);
+ * - `geometry` when an `init` or `first_frame` input gives the size (A4),
+ *   unless the caller knows that input's size: then the width and height are
+ *   the input's (after its crop), as near as the route allows, with source
+ *   `input`, so `effective` says the size the backend is sent (sd-server
+ *   would otherwise resize the image to its own default);
  * - `weight` on `init` and `mask` inputs, which take none (A8);
  * - a hires pass's `scale` beside its `target`, or the reverse (A9).
  *
  * A top-level object that filling started but could not complete (a default
  * width with no height) is taken out again, so `effective` stays valid.
+ *
+ * {@link fillExtensionDefaults} does the same for the route's own
+ * `extensions` block: every `default` its schema gives is written out (L7).
  */
 
 import {
@@ -50,6 +56,14 @@ export interface FillLayers {
   readonly profile: FieldValues;
 }
 
+export interface FillOptions {
+  /**
+   * The pixel size of the input that gives the output's size (the init image,
+   * after its crop), when the caller knows it.
+   */
+  readonly derivedSize?: { readonly width: number; readonly height: number };
+}
+
 export interface FillResult {
   readonly effective: GenerationRequest;
   /** Where each filled value came from, by pointer. Values the request set are not listed. */
@@ -62,7 +76,7 @@ export interface FillResult {
 const NEVER_FILLED: ReadonlySet<string> = new Set(['prompt.positive', 'sampling.seed']);
 
 /** Input roles whose asset gives the output's size (A4). */
-const SIZE_GIVING_ROLES: ReadonlySet<string> = new Set(['init', 'first_frame']);
+export const SIZE_GIVING_ROLES: ReadonlySet<string> = new Set(['init', 'first_frame']);
 
 /** Lantern's own fallback where no layer gives a value. */
 const BUILTIN: FieldValues = { count: 1 };
@@ -161,6 +175,32 @@ function targetsOf(effective: Record<string, unknown>, path: string): Target[] {
   return targets;
 }
 
+/**
+ * A size as near to `value` as the narrowing allows: the nearest multiple of
+ * `multipleOf`, then pulled inside the bounds onto a multiple. Undefined when
+ * no such value exists.
+ */
+export function snapSize(value: number, narrowing: FieldNarrowing): number | undefined {
+  const step = narrowing.multipleOf;
+  const onStep = (n: number, round: (x: number) => number): number =>
+    step === undefined ? round(n) : round(n / step) * step;
+  let size = onStep(value, Math.round);
+  if (step !== undefined) size = Math.max(size, step);
+  const lower = narrowing.minimum ?? narrowing.exclusiveMinimum;
+  const upper = narrowing.maximum ?? narrowing.exclusiveMaximum;
+  if (lower !== undefined && size < lower) size = onStep(lower, Math.ceil);
+  if (narrowing.exclusiveMinimum !== undefined && size <= narrowing.exclusiveMinimum) {
+    size = onStep(narrowing.exclusiveMinimum + (step ?? 1), Math.ceil);
+  }
+  if (upper !== undefined && size > upper) size = onStep(upper, Math.floor);
+  if (narrowing.exclusiveMaximum !== undefined && size >= narrowing.exclusiveMaximum) {
+    size = onStep(narrowing.exclusiveMaximum - (step ?? 1), Math.floor);
+  }
+  return Number.isInteger(size) && size >= 1 && satisfiesNarrowing(size, narrowing)
+    ? size
+    : undefined;
+}
+
 /** Whether a value may not go here, whatever it is (see the module comment). */
 function excluded(path: string, target: Target, derivedSize: boolean): boolean {
   if (derivedSize && path.startsWith('geometry.')) return true;
@@ -225,16 +265,24 @@ function pruneIncomplete(
  * @param canonical the validated canonical request; not mutated
  * @param mode the route's descriptor for the request's mode
  * @param layers the preset, model-override and profile values for the mode
+ * @param options what the caller knows of the inputs
  */
 export function fillDefaults(
   canonical: GenerationRequest,
   mode: ModeDescriptor,
   layers: FillLayers,
+  options: FillOptions = {},
 ): FillResult {
   const effective = structuredClone(canonical) as unknown as Record<string, unknown>;
   const sources = new Map<string, FieldSource>();
   const warnings: ResolutionWarning[] = [];
   const derivedSize = (canonical.inputs ?? []).some((input) => SIZE_GIVING_ROLES.has(input.role));
+
+  // The input's size, where the request leaves the size to it (A4).
+  if (derivedSize && options.derivedSize !== undefined && canonical.geometry === undefined) {
+    const sized = deriveGeometry(effective, mode, options.derivedSize, sources);
+    if (sized !== undefined) warnings.push(sized);
+  }
 
   // In the request schema's order, so the result never depends on the descriptor's key order.
   for (const [path, node] of REQUEST_NODES) {
@@ -280,4 +328,104 @@ export function fillDefaults(
     sources,
     warnings,
   };
+}
+
+/**
+ * Writes the input's size into `geometry`, snapped to what the route takes.
+ * Leaves `geometry` out when the route lists no size, or no size it takes is
+ * near; answers a warning when the size had to move.
+ */
+function deriveGeometry(
+  effective: Record<string, unknown>,
+  mode: ModeDescriptor,
+  size: { readonly width: number; readonly height: number },
+  sources: Map<string, FieldSource>,
+): ResolutionWarning | undefined {
+  const widthEntry = mode.fields['geometry.width'];
+  const heightEntry = mode.fields['geometry.height'];
+  if (widthEntry === undefined || heightEntry === undefined) return undefined;
+  if (widthEntry.state === 'ignored' || heightEntry.state === 'ignored') return undefined;
+  const width = snapSize(size.width, routeNarrowing('geometry.width', widthEntry, mode));
+  const height = snapSize(size.height, routeNarrowing('geometry.height', heightEntry, mode));
+  if (width === undefined || height === undefined) {
+    return {
+      code: 'input_size_refused',
+      source: 'resolver',
+      paths: ['geometry.width', 'geometry.height'],
+      message: `The input is ${String(size.width)}×${String(size.height)}, and this route takes no size near it; set the size.`,
+    };
+  }
+  effective['geometry'] = { width, height };
+  sources.set('/geometry/width', 'input');
+  sources.set('/geometry/height', 'input');
+  if (width === size.width && height === size.height) return undefined;
+  return {
+    code: 'input_size_adjusted',
+    source: 'resolver',
+    paths: ['geometry.width', 'geometry.height'],
+    message: `The input is ${String(size.width)}×${String(size.height)}; the output is ${String(width)}×${String(height)}, the nearest size this route takes.`,
+  };
+}
+
+/** A JSON Schema's object properties, when it has any. */
+function propertiesOf(schema: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(schema)) return undefined;
+  const properties = schema['properties'];
+  return isRecord(properties) ? properties : undefined;
+}
+
+/**
+ * A copy of `value` with every `default` the schema gives where `value` has
+ * nothing, nested objects included; `undefined` when there is nothing at all.
+ */
+function withSchemaDefaults(value: unknown, schema: unknown): unknown {
+  const properties = propertiesOf(schema);
+  if (properties === undefined) return value;
+  if (value !== undefined && !isRecord(value)) return value;
+  const filled: Record<string, unknown> = { ...(value ?? {}) };
+  for (const [name, property] of Object.entries(properties)) {
+    if (!isRecord(property)) continue;
+    if (filled[name] === undefined) {
+      if (property['default'] !== undefined) {
+        filled[name] = structuredClone(property['default']);
+      } else {
+        const nested = withSchemaDefaults(undefined, property);
+        if (nested !== undefined) filled[name] = nested;
+      }
+    } else if (isRecord(filled[name])) {
+      filled[name] = withSchemaDefaults(filled[name], property);
+    }
+  }
+  return Object.keys(filled).length === 0 && value === undefined ? undefined : filled;
+}
+
+/**
+ * Fills the route's own extension block from the `default`s of its schema
+ * (L7): what sd-server would assume from its command line is written out,
+ * so the request reproduces on an instance started with other flags. Blocks
+ * for other backend kinds are left as they are (the field report says they
+ * are ignored). Mutates `effective`; the block's source is `descriptor` when
+ * the request gave none, else it stays the request's.
+ *
+ * @param effective the effective request, filled by {@link fillDefaults}
+ * @param mode the route's descriptor for the request's mode
+ * @param backendKind the route's backend kind: the key of its block
+ * @param sources the filled values' sources, by pointer
+ */
+export function fillExtensionDefaults(
+  effective: GenerationRequest,
+  mode: ModeDescriptor,
+  backendKind: string,
+  sources: Map<string, FieldSource>,
+): void {
+  const schema = mode.extensions?.[backendKind];
+  if (schema === undefined) return;
+  const requested = effective.extensions?.[backendKind];
+  const filled = withSchemaDefaults(requested, schema);
+  // Nothing to write, or nothing the request lacked.
+  if (!isRecord(filled) || JSON.stringify(filled) === JSON.stringify(requested)) return;
+  effective.extensions = { ...effective.extensions, [backendKind]: filled };
+  if (requested === undefined) {
+    sources.set(`/extensions/${pointerSegment(backendKind)}`, 'descriptor');
+  }
 }

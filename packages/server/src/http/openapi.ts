@@ -51,6 +51,15 @@ export const OPENAPI_TAGS = [
     name: 'generation',
     description: 'Resolving generation requests against models and their routes.',
   },
+  {
+    name: 'backends',
+    description:
+      'What serves generations: backend kinds, autodetect, and the registry of backends and their routes.',
+  },
+  {
+    name: 'models',
+    description: 'Models, their profiles, and each route’s effective descriptor.',
+  },
 ] as const;
 
 const SWAGGER_OPTIONS: FastifyDynamicSwaggerOptions = {
@@ -179,6 +188,9 @@ export function openApiStubServices(): AppServices {
     },
     get models(): AppServices['models'] {
       return unavailable('services.models');
+    },
+    get backends(): AppServices['backends'] {
+      return unavailable('services.backends');
     },
     get resolver(): AppServices['resolver'] {
       return unavailable('services.resolver');

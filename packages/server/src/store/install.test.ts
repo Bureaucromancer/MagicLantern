@@ -90,7 +90,8 @@ describe('openInstallStore', () => {
     const log = collectingLog();
     const { store, migration } = await openInstall(dataDir, { boot: testBoot(), log });
     store.close();
-    expect(migration).toEqual({ from: 1, to: 1, snapshot: null });
+    const version = INSTALL_STEPS.length;
+    expect(migration).toEqual({ from: version, to: version, snapshot: null });
     expect(log.lines).toEqual([]);
   });
 
@@ -260,7 +261,9 @@ describe('openInstallStore', () => {
     });
     const attempt = openInstallStore(dataDir, { boot: testBoot(), log: collectingLog() });
     await expect(attempt).rejects.toThrow(InstallSchemaTooNewError);
-    await expect(attempt).rejects.toThrow(/schema version 99, but this Lantern knows 1/);
+    await expect(attempt).rejects.toThrow(
+      new RegExp(`schema version 99, but this Lantern knows ${String(INSTALL_STEPS.length)}`),
+    );
     expect(userVersionOf(installDb)).toBe(99);
     // Not even switched to WAL: the probe opened it read-only.
     expect(
@@ -354,10 +357,13 @@ describe('openInstallStore', () => {
       { steps: next },
     );
     store.close();
-    expect(migration.from).toBe(1);
-    expect(migration.to).toBe(2);
-    expect(migration.snapshot).toMatch(/[/\\]backups[/\\]lantern\.v1\.[0-9A-Z]{26}\.db$/);
-    expect(userVersionOf(migration.snapshot ?? '')).toBe(1);
+    const shipped = INSTALL_STEPS.length;
+    expect(migration.from).toBe(shipped);
+    expect(migration.to).toBe(shipped + 1);
+    expect(migration.snapshot).toMatch(
+      new RegExp(`[/\\\\]backups[/\\\\]lantern\\.v${String(shipped)}\\.[0-9A-Z]{26}\\.db$`),
+    );
+    expect(userVersionOf(migration.snapshot ?? '')).toBe(shipped);
   });
 
   it('sweeps partial snapshots an interrupted migration left', async () => {

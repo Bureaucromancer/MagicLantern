@@ -71,11 +71,12 @@ function raw(family: string): ModelProfile {
 }
 
 describe('the built-in profile files', () => {
-  it('cover the families Phase 2 promises', () => {
+  it('cover the families Phase 2 promises, and the generic profile of Phase 5', () => {
     expect(RAW.map((p) => p.family).sort()).toEqual([
       'flux1-dev',
       'flux1-schnell',
       'flux2-klein',
+      'generic',
       'qwen-image',
       'qwen-image-edit',
       'sd15',

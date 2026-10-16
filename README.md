@@ -57,8 +57,16 @@ node packages/server/dist/main.js serve
 ```
 
 The daemon binds `127.0.0.1:7600` by default and serves the built app at `/`. Configuration is a
-JSON file plus environment variables; see [`lantern.example.json`](lantern.example.json). The other
-commands run the same way:
+JSON file plus environment variables; see [`lantern.example.json`](lantern.example.json).
+
+Backends are listed under `backends` in that file, each with a stable `id`: an sd-server
+(`"kind": "sdcpp"`, its URL) or a Lemonade server (`"kind": "lemonade"`), whose loaded image models
+Lantern finds and reaches directly. Lemonade's children listen on 127.0.0.1, so run Lantern on the
+Lemonade host. Backends can also be found and added through the API (`POST /api/v1/backends/detect`,
+then `POST /api/v1/backends`); each model is registered with a profile guessed from its file name,
+which `PATCH /api/v1/models/{id}` corrects.
+
+The other commands run the same way:
 
 ```sh
 node packages/server/dist/main.js set-password   # turns on password sign-in (reads stdin)

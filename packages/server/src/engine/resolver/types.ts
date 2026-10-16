@@ -2,10 +2,9 @@
 // Copyright (C) 2026 Magic Lantern contributors
 
 /**
- * The resolver's inputs and outputs. Backends, models and routes have no
- * tables yet (Phase 5), so the model and its route candidates are minimal
- * in-memory shapes named after the plan's data model (`models`, `routes`):
- * whoever builds them (the model catalog, tests) supplies each route's
+ * The resolver's inputs and outputs. The model and its route candidates are
+ * minimal shapes named after the plan's data model (`models`, `routes`):
+ * whoever builds them (the backend registry, tests) supplies each route's
  * effective descriptor, already merged (A6).
  */
 
@@ -14,6 +13,7 @@ import type {
   FieldReport,
   GenerationMode,
   GenerationRequest,
+  Input,
   ResolutionWarning,
   ResolvedRoute,
   RouteDescriptor,
@@ -38,7 +38,7 @@ export type ModelFingerprint =
       readonly definition_hash: string;
     };
 
-/** One route of a model, as the resolver sees it (`routes` row, Phase 5). */
+/** One route of a model, as the resolver sees it (a `routes` row). */
 export interface RouteCandidate {
   /** `routes.id`. */
   readonly id: string;
@@ -56,7 +56,7 @@ export interface RouteCandidate {
   readonly fingerprint?: ModelFingerprint;
 }
 
-/** A model, as the resolver sees it (`models` row and its routes, Phase 5). */
+/** A model, as the resolver sees it (a `models` row and its routes). */
 export interface ResolverModel {
   /** `models.id`. */
   readonly id: string;
@@ -78,7 +78,16 @@ export interface ResolveInput {
   readonly route?: string;
   /** A preset's values by field path, the second layer of precedence. Empty until presets exist. */
   readonly preset?: FieldValues;
+  /**
+   * The pixel size of an input after its crop, when the caller can measure
+   * it: the init image's gives the output size where the request leaves it
+   * out (A4). Absent, or answering undefined: the size stays unset.
+   */
+  readonly inputSize?: InputSizer;
 }
+
+/** The size of a request's input after its crop, or undefined when it is not known. */
+export type InputSizer = (input: Input) => { width: number; height: number } | undefined;
 
 /** One job of the plan: 0.1 runs one; emulated fan-out (0.3) makes a tree. */
 export interface PlannedJob {
@@ -136,8 +145,8 @@ export type WireRequest = unknown;
 
 /**
  * The hook the engine calls after finalising, mirroring the adapter
- * interface's pure `prepare(route, req)` (A14). No adapters exist until
- * Phase 5, so nothing implements it yet.
+ * interface's pure `prepare(route, req)` (A14). The engine prepares through
+ * the route's adapter itself, after cutting crops, so it passes none.
  */
 export interface PrepareHook {
   prepare(route: string, effective: GenerationRequest): Promise<WireRequest>;

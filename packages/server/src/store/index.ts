@@ -13,6 +13,17 @@
  */
 
 export { writeFileAtomic, writeJsonAtomic, type AtomicWriteOptions } from './atomic.js';
+export {
+  BackendStore,
+  canonicalText,
+  type BackendRow,
+  type BackendRowSource,
+  type BackendRowStatus,
+  type ModelRow,
+  type RouteRow,
+  type RouteRowHealth,
+  type RouteRowLoadState,
+} from './backends.js';
 export { readMachineBootId } from './boot.js';
 export { StoreError } from './errors.js';
 export { DataDirError, ensureWritableDataDir } from './files.js';
@@ -48,7 +59,7 @@ export {
   type UsageRecord,
 } from './library-types.js';
 export { IngestError, LocalLibrary } from './local-library.js';
-export { ImageRefusedError, MAX_INPUT_PIXELS, THUMBNAIL_MEDIA_TYPE } from './media.js';
+export { cropPixels, ImageRefusedError, MAX_INPUT_PIXELS, THUMBNAIL_MEDIA_TYPE } from './media.js';
 export { acquireInstanceLock, InstanceLockHeldError } from './lock.js';
 export { migrateAll } from './migrate.js';
 export {

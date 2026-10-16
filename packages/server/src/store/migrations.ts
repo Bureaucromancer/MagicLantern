@@ -45,6 +45,74 @@ create table lease (
 ) strict;
 `,
   },
+  {
+    sql: `
+-- The backend registry (plan, "Data model"; Phase 5). A backend is a config
+-- backend (lantern.json, reconciled at every start, tombstoned when removed)
+-- or one added through the API. settings is the kind's settings; secrets
+-- holds what is never answered over the API.
+create table backends (
+  id              text primary key,
+  kind            text not null,
+  name            text not null,
+  base_url        text not null,
+  settings        text not null default '{}' check (json_valid(settings)),
+  secrets         text check (secrets is null or json_valid(secrets)),
+  resource_group  text not null,
+  concurrency     integer not null default 1 check (concurrency >= 1),
+  source          text not null check (source in ('config', 'ui')),
+  status          text not null default 'active' check (status in ('active', 'tombstoned')),
+  health          text check (health is null or json_valid(health)),
+  last_seen       real,
+  created_at      real not null,
+  updated_at      real not null
+) strict;
+
+-- Models: a Lantern id plus a fingerprint (L4), matched automatically when a
+-- model reappears (A26). The fingerprint is canonical JSON, so equal
+-- identities are equal text.
+create table models (
+  id                 text primary key,
+  display_name       text not null,
+  family             text not null,
+  variant            text,
+  fingerprint        text not null unique check (json_valid(fingerprint)),
+  profile_overrides  text check (profile_overrides is null or json_valid(profile_overrides)),
+  created_at         real not null,
+  updated_at         real not null
+) strict;
+
+-- Routes: one backend serving one model. base_url is where the adapter
+-- reaches the instance (a Lemonade child's moves with each load);
+-- manager_ref is the manager's own name for the model. A retired route is
+-- one the backend no longer serves; it keeps its id for when it comes back.
+-- descriptor is the adapter's describe() result, cached (A6, L3).
+create table routes (
+  id                     text primary key,
+  model_id               text not null references models (id),
+  backend_id             text not null references backends (id),
+  adapter_kind           text not null,
+  manager_ref            text,
+  base_url               text not null,
+  priority               integer not null default 0,
+  cost                   real,
+  health                 text not null default 'ok' check (health in ('ok', 'degraded', 'down')),
+  load_state             text not null default 'unknown' check (load_state in ('loaded', 'cold', 'unknown')),
+  health_detail          text,
+  retired_at             real,
+  descriptor             text check (descriptor is null or json_valid(descriptor)),
+  descriptor_digest      text,
+  descriptor_fetched_at  real,
+  probe_results          text check (probe_results is null or json_valid(probe_results)),
+  overrides              text check (overrides is null or json_valid(overrides)),
+  created_at             real not null,
+  updated_at             real not null,
+  unique (backend_id, model_id)
+) strict;
+
+create index routes_model on routes (model_id);
+`,
+  },
 ];
 
 /** The install schema this build writes. A newer `lantern.db` refuses to start (A20). */

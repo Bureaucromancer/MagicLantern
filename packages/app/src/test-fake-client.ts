@@ -160,6 +160,26 @@ export function fakeClient(initial: Partial<FakeDaemonState> = {}): {
     queue: vi.fn<LanternClient['queue']>(() => gate().then(() => ({ entries: [] }))),
     // A stream that ends at once, having said nothing.
     streamEvents: vi.fn<LanternClient['streamEvents']>(() => gate().then(() => null)),
+    // No backends or models until a test sets some up (Phase 6 renders them).
+    backendKinds: vi.fn<LanternClient['backendKinds']>(() => gate().then(() => ({ kinds: [] }))),
+    detectBackends: vi.fn<LanternClient['detectBackends']>(() =>
+      gate().then(() => ({ candidates: [], probes: [] })),
+    ),
+    listBackends: vi.fn<LanternClient['listBackends']>(() => gate().then(() => ({ backends: [] }))),
+    createBackend: vi.fn<LanternClient['createBackend']>(() =>
+      gate().then(() => Promise.reject(new LanternApiError(422, 'invalid', 'No backend kinds.'))),
+    ),
+    refreshBackend: vi.fn<LanternClient['refreshBackend']>(() =>
+      gate().then(() => Promise.reject(new LanternApiError(404, 'not-found', 'No such backend.'))),
+    ),
+    listModels: vi.fn<LanternClient['listModels']>(() => gate().then(() => ({ models: [] }))),
+    getModel: vi.fn<LanternClient['getModel']>(() =>
+      gate().then(() => Promise.reject(new LanternApiError(404, 'not-found', 'No such model.'))),
+    ),
+    updateModel: vi.fn<LanternClient['updateModel']>(() =>
+      gate().then(() => Promise.reject(new LanternApiError(404, 'not-found', 'No such model.'))),
+    ),
+    listProfiles: vi.fn<LanternClient['listProfiles']>(() => gate().then(() => ({ profiles: [] }))),
   };
 
   function noJob(): Promise<never> {

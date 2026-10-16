@@ -93,10 +93,13 @@ export type Licence = Static<typeof Licence>;
 // Prompt
 // ---------------------------------------------------------------------------
 
-export const PromptDialect = Type.Union([Type.Literal('tags'), Type.Literal('natural')], {
-  description:
-    '`tags`: comma-separated tag lists (SD1.5, SDXL). `natural`: sentences (Flux, Qwen, most DiTs).',
-});
+export const PromptDialect = Type.Union(
+  [Type.Literal('tags'), Type.Literal('natural'), Type.Literal('unconfirmed')],
+  {
+    description:
+      '`tags`: comma-separated tag lists (SD1.5, SDXL). `natural`: sentences (Flux, Qwen, most DiTs). `unconfirmed`: not known (the generic profile).',
+  },
+);
 export type PromptDialect = Static<typeof PromptDialect>;
 
 export const PromptRules = Type.Object(

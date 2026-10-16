@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+import { runMigrations } from './db.js';
+import { INSTALL_STEPS } from './migrations.js';
 import type { BootIdentity, StoreLog } from './types.js';
 
 /**
@@ -16,6 +18,14 @@ import type { BootIdentity, StoreLog } from './types.js';
  * /var → /private/var) or 8.3 aliases, and paths compared against what the
  * code resolves must be the long form.
  */
+/** An install database in memory, migrated: the backend registry's rows, with no data directory. */
+export function memoryInstallDb(): DatabaseSync {
+  const db = new DatabaseSync(':memory:');
+  db.exec('pragma foreign_keys = on');
+  runMigrations(db, INSTALL_STEPS);
+  return db;
+}
+
 export async function tempDir(prefix: string): Promise<string> {
   return realpath(await mkdtemp(join(tmpdir(), `lantern-${prefix}-`)));
 }

@@ -53,7 +53,7 @@ import { randomInt } from 'node:crypto';
 import { issuesOfAjv } from '../../validation/issues.js';
 import { canonicalJson, createRequestValidator, descriptorDigest } from '../descriptor/index.js';
 import type { ProfileRegistry, ResolvedProfile } from '../profiles/index.js';
-import { fillDefaults, routeNarrowing } from './fill.js';
+import { fillDefaults, fillExtensionDefaults, routeNarrowing, SIZE_GIVING_ROLES } from './fill.js';
 import { fieldOfPointer, valueAt } from './leaves.js';
 import { buildFieldReport, profileWarnings } from './report.js';
 import { suggestValue } from './suggest.js';
@@ -61,6 +61,7 @@ import type {
   FieldValues,
   FinaliseOutcome,
   FinaliseSource,
+  InputSizer,
   PrepareHook,
   Resolution,
   ResolveFailure,
@@ -90,8 +91,10 @@ export type SeedPolicy =
 export interface FinaliseOptions {
   /** The preset the provisional resolution used. */
   readonly preset?: FieldValues;
-  /** The adapter's `prepare`, once adapters exist (Phase 5). */
+  /** A `prepare` to call with the finalised request; the engine calls its adapter's itself. */
   readonly prepare?: PrepareHook;
+  /** Measures inputs, as at submit, so the init image gives the size again (A4). */
+  readonly inputSize?: InputSizer;
 }
 
 export interface Resolver {
@@ -317,12 +320,19 @@ export function createResolver(options: ResolverOptions): Resolver {
     // Checked when the route was chosen.
     if (mode === undefined) throw new Error(`Route ${chosen.id} lost ${modeName}`);
 
-    // 4. Values by precedence.
-    const filled = fillDefaults(canonical, mode, {
-      preset: input.preset ?? {},
-      model: model.profile_overrides?.[modeName] ?? {},
-      profile: profileDefaults(profile, modeName),
-    });
+    // 4. Values by precedence; the size from the init image where the mode takes it from there.
+    const sizing = canonical.inputs?.find((item) => SIZE_GIVING_ROLES.has(item.role));
+    const derivedSize = sizing === undefined ? undefined : input.inputSize?.(sizing);
+    const filled = fillDefaults(
+      canonical,
+      mode,
+      {
+        preset: input.preset ?? {},
+        model: model.profile_overrides?.[modeName] ?? {},
+        profile: profileDefaults(profile, modeName),
+      },
+      derivedSize === undefined ? {} : { derivedSize },
+    );
     const effective = filled.effective;
     const sources = new Map<string, FieldSource>(filled.sources);
 
@@ -331,6 +341,9 @@ export function createResolver(options: ResolverOptions): Resolver {
       effective.sampling.seed = draw(seedRange(mode), seedPolicy);
       sources.set('/sampling/seed', 'drawn');
     }
+
+    // The route's own extension block, its defaults written out (L7).
+    fillExtensionDefaults(effective, mode, chosen.backend_kind, sources);
 
     // `effective` must resubmit as it stands (A2).
     const recheck = validateSchema(effective)
@@ -422,6 +435,9 @@ export function createResolver(options: ResolverOptions): Resolver {
         model,
         route: routeId,
         ...(finaliseOptions.preset === undefined ? {} : { preset: finaliseOptions.preset }),
+        ...(finaliseOptions.inputSize === undefined
+          ? {}
+          : { inputSize: finaliseOptions.inputSize }),
       },
       { fixed: seedOf(provisional) },
     );
