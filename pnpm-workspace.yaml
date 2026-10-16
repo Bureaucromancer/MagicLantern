@@ -12,6 +12,15 @@ packages:
 # setting takes effect.
 engineStrict: true
 
+# Runs every script through pnpm's own bash-like shell instead of the platform's.
+# Without it, Windows runs scripts through cmd.exe, which reads the server's
+# `LANTERN_ALLOWED_ORIGINS=… tsx watch …` as a command named
+# `LANTERN_ALLOWED_ORIGINS=…` and fails before tsx starts; macOS and Linux run
+# them through sh, which is why it worked there and CI (ubuntu only) never saw
+# it. The emulator is used on every platform, not just Windows, so a script that
+# runs in one place runs the same way everywhere.
+shellEmulator: true
+
 allowBuilds:
   # Under tsx (the server's watch mode). Its install script only re-checks a
   # binary pnpm has already linked from the per-platform package, so no
