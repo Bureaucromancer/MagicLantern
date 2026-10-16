@@ -12,7 +12,9 @@
 import { registerOpenApiRoute } from '../http/openapi.js';
 import type { LanternApp } from '../http/types.js';
 import { registerAssetRoutes } from './assets.js';
+import { registerEventRoutes } from './events.js';
 import { registerInfoRoutes } from './info.js';
+import { registerJobRoutes } from './jobs.js';
 import { registerLibrariesRoutes } from './libraries.js';
 import { registerResolveRoutes } from './resolve.js';
 import { registerSessionRoutes } from './session.js';
@@ -28,5 +30,7 @@ export function registerApiRoutes(api: LanternApp, options: ApiRouteOptions): vo
   registerLibrariesRoutes(api);
   registerAssetRoutes(api, { maxUploadMb: options.maxUploadMb });
   registerResolveRoutes(api);
+  registerJobRoutes(api);
+  registerEventRoutes(api);
   registerOpenApiRoute(api);
 }

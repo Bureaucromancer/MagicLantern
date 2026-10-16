@@ -402,6 +402,19 @@ export interface Adapter {
   - Event types: `job.updated`, `job.progress`, `asset.created`, `backend.health` (with each route's load state), `reset`.
   - Progress events carry a preview URL, never image bytes. Previews live in memory only.
   - The stream sends keepalives and `X-Accel-Buffering: no`.
+- **Choices made in Phase 4 (EN1 to EN6).** What the points above leave open:
+  - **Where things live.** The adapter interface and its status types are in `adapters/shared`, the only place an adapter may import besides the schema (rule 9), with the `$asset` placeholder helpers and a zlib-only PNG encoder. The engine is `engine/jobs`. Route bindings (adapter, resource group, concurrency) are a startup list until Phase 5 gives them tables, like the model catalog.
+  - **`identify(route)`** joins the adapter interface: the model a route serves now, from the backend or its manager, never by sending work (L3). It is checked against the catalog's fingerprint at dispatch, and against a handle's instance fingerprint before polling resumes.
+  - **Finalising from what is stored.** The provisional resolution at submit stores the seed in `effective` and the model's identity in a provisional `route_snapshot`; dispatch finalises from those, so a job queued before a restart dispatches like any other. The dispatch snapshot adds the backend and, from the result, the generator version.
+  - **Lanes.** Until client tokens, a library is one lane: order is priority, then age. `queue_rank` and lane rotation arrive with 0.3.
+  - **Blocking.** Every block carries `retry_after` (added to `BlockedReason`, L6): the backend's own for a turn-away, else 30 s. `request_invalid` and `route_missing` block too rather than fail, since a route may come back or change.
+  - **Crops** the route emulates are cut into derived assets at dispatch; `effective`, `wire` and `job_inputs` name the derived asset, so Reproduce needs no crop.
+  - **Cross-library inputs** are found by id (a hash) in any library and copied in at submit, with `source_library` recorded; the request names no library.
+  - **Progress** is published as events; only a change of wait reason is written to the row.
+  - **Idempotency:** the same key and body answer the first job (200, `replayed`); another body is 409.
+  - **Unexpected worker errors** fail the job as `backend_error` rather than leave it in flight.
+  - **Shutdown** stops polls and in-flight submits, never the backend's jobs, and ends open event streams so they do not hold the close.
+  - **Development:** `LANTERN_DEV=1` serves the mock on route `rt_dev_mock`; `LANTERN_DEV_MOCK_PROFILE` picks its behaviour (`basic`, `sdserver`, `sync`, `port_reuse`, `lost`, `orchd`). The mock runs inside the daemon, so a real restart loses its jobs (`backend_lost`); the engine tests keep one mock across restarts to cover resuming.
 
 ### Asset store
 

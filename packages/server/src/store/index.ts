@@ -30,6 +30,10 @@ export {
   type FinishedJobInput,
   type FinishedJobOutput,
   type ImportedJob,
+  type JobChange,
+  type JobFilter,
+  type JobPageRecord,
+  type JobPayloads,
   type JobOutcome,
   type JobRecord,
   type JobState,
@@ -39,6 +43,7 @@ export {
   type NewJob,
   type OutputOf,
   type ProvenanceRecord,
+  type SpooledResult,
   type StoredAsset,
   type UsageRecord,
 } from './library-types.js';

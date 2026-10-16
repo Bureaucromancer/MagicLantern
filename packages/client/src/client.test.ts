@@ -544,3 +544,78 @@ describe('libraries and assets', () => {
     expect((await apiErrorOf(client.createLibrary('A'))).code).toBe(ErrorCodes.conflict);
   });
 });
+
+describe('jobs and events', () => {
+  const LIB = LIBRARY.id;
+  const JOB = 'job_01JA2B3C4D5E6F7G8H9JKMNPQR';
+  const SUBMITTED = { job: { id: JOB }, field_report: {}, warnings: [], replayed: false };
+
+  it('submits a job with an Idempotency-Key when given one', async () => {
+    const { client, fake } = clientAnswering(json(202, SUBMITTED), json(202, SUBMITTED));
+    const body = { request: RESOLVE_BODY.request, model: 'mdl_a' };
+    await client.submitJob(LIB, body, { idempotencyKey: 'k-1' });
+    await client.submitJob(LIB, body);
+    const [keyed, plain] = fake.requests;
+    expect(keyed!.url).toBe(`${BASE}/api/v1/libraries/${LIB}/jobs`);
+    expect(keyed!.headers.get('idempotency-key')).toBe('k-1');
+    expect(JSON.parse(keyed!.body!)).toEqual(body);
+    expect(plain!.headers.has('idempotency-key')).toBe(false);
+  });
+
+  it('reaches history, one job, cancel, reruns and the queue', async () => {
+    const { client, fake } = clientAnswering(
+      json(200, { jobs: [], next_cursor: null }),
+      json(200, { id: JOB }),
+      json(202, { id: JOB }),
+      json(202, SUBMITTED),
+      json(202, SUBMITTED),
+      json(200, { entries: [] }),
+    );
+    await client.listJobs(LIB, { state: 'live', limit: 5 });
+    await client.getJob(LIB, JOB);
+    await client.cancelJob(LIB, JOB);
+    await client.reproduceJob(LIB, JOB);
+    await client.rerollJob(LIB, JOB);
+    await client.queue(LIB);
+    expect(fake.requests.map((request) => `${request.method} ${request.url}`)).toEqual([
+      `GET ${BASE}/api/v1/libraries/${LIB}/jobs?state=live&limit=5`,
+      `GET ${BASE}/api/v1/libraries/${LIB}/jobs/${JOB}`,
+      `POST ${BASE}/api/v1/libraries/${LIB}/jobs/${JOB}/cancel`,
+      `POST ${BASE}/api/v1/libraries/${LIB}/jobs/${JOB}/reproduce`,
+      `POST ${BASE}/api/v1/libraries/${LIB}/jobs/${JOB}/reroll`,
+      `GET ${BASE}/api/v1/queue?library=${LIB}`,
+    ]);
+  });
+
+  it('streams events, parsed, split across chunks, and answers the last id', async () => {
+    const chunks = [
+      ': connected\n\nid: b:1\nevent: job.updated\nda',
+      'ta: {"library":"x"}\n\nid: b:2\nevent: reset\ndata: {}\n\n',
+    ];
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk));
+        controller.close();
+      },
+    });
+    const { client, fake } = clientAnswering(
+      new Response(stream, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+    );
+    const seen: unknown[] = [];
+    const last = await client.streamEvents((event) => seen.push(event), { lastEventId: 'b:0' });
+    expect(seen).toEqual([
+      { id: 'b:1', type: 'job.updated', data: { library: 'x' } },
+      { id: 'b:2', type: 'reset', data: {} },
+    ]);
+    expect(last).toBe('b:2');
+    expect(fake.only().headers.get('last-event-id')).toBe('b:0');
+    expect(fake.only().headers.get('accept')).toBe('text/event-stream');
+  });
+
+  it('rejects a refused stream with the daemon’s code', async () => {
+    const { client } = clientAnswering(
+      json(401, { error: 'unauthenticated', message: 'Sign in first.' }),
+    );
+    expect((await apiErrorOf(client.streamEvents(() => undefined))).code).toBe('unauthenticated');
+  });
+});

@@ -13,6 +13,11 @@ export {
   profileLayerFor,
 } from './catalog.js';
 export {
+  DEV_BACKEND_ID,
+  DEV_BASE_URL,
+  devBackend,
+  devMockProfile,
+  devModel,
   DEV_MODEL,
   DEV_MODEL_ID,
   DEV_ROUTE_DESCRIPTOR,

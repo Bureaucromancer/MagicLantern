@@ -143,6 +143,20 @@ export interface PrepareHook {
   prepare(route: string, effective: GenerationRequest): Promise<WireRequest>;
 }
 
+/**
+ * What finalising at dispatch needs of the provisional resolution: what a
+ * stored job keeps (`canonical`, the seed drawn at submit, the route, the
+ * model's identity then). A {@link Resolution} is one.
+ */
+export interface FinaliseSource {
+  readonly canonical: GenerationRequest;
+  readonly route: { readonly id: string };
+  readonly effective: {
+    readonly sampling: { readonly seed: GenerationRequest['sampling']['seed'] };
+  };
+  readonly fingerprint?: ModelFingerprint;
+}
+
 /** What finalising at dispatch gives. */
 export type FinaliseOutcome =
   | {

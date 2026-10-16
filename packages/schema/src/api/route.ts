@@ -35,6 +35,8 @@ export interface RouteSchema {
   body?: TSchema;
   params?: TSchema;
   querystring?: TSchema;
+  /** Request headers the route reads; other headers pass (the schema must allow them). */
+  headers?: TSchema;
   response?: Record<number, TSchema>;
 }
 
@@ -74,5 +76,16 @@ export function binaryResponse(
   return Type.Unsafe<Uint8Array>({
     description,
     content: Object.fromEntries(mediaTypes.map((mediaType) => [mediaType, { schema }])),
+  });
+}
+
+/**
+ * A streamed text response (`text/event-stream`), documented under its own
+ * media type so the error answers beside it stay JSON.
+ */
+export function streamResponse(description: string, mediaType: string): TUnsafe<string> {
+  return Type.Unsafe<string>({
+    description,
+    content: { [mediaType]: { schema: { type: 'string', description } } },
   });
 }

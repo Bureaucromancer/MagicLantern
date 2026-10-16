@@ -12,8 +12,12 @@ export {
   type LanternClient,
   type LanternClientOptions,
   type ListAssetsOptions,
+  type ListJobsOptions,
   type RequestOptions,
+  type StreamOptions,
+  type SubmitOptions,
 } from './client.js';
+export { createEventParser, type LanternStreamEvent } from './events.js';
 export {
   errorCode,
   INVALID_RESPONSE_CODE,
@@ -39,6 +43,15 @@ export type {
   GenerationRequest,
   HealthResponse,
   InfoResponse,
+  JobDetail,
+  JobPage,
+  JobProgress,
+  JobState,
+  JobSummary,
+  QueueEntry,
+  QueueResponse,
+  SubmitBody,
+  SubmitResponse,
   LibraryId,
   LibraryListResponse,
   LibraryStatus,

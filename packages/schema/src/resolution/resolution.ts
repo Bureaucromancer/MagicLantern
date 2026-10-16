@@ -175,9 +175,15 @@ export const BlockedReason = Type.Object(
     code: Type.String({
       pattern: '^[a-z][a-z0-9_]*$',
       description:
-        '`routes_down`, `route_missing`, `identity_changed` or `request_invalid`; later `backend_rejected` (L6).',
+        '`routes_down`, `route_missing`, `identity_changed`, `request_invalid`, or `backend_rejected` when a backend turned the job away before starting it (L6).',
     }),
     detail: Type.Optional(Type.String()),
+    retry_after: Type.Optional(
+      Type.String({
+        format: 'date-time',
+        description: 'The scheduler leaves the job alone until then.',
+      }),
+    ),
   },
   {
     additionalProperties: false,

@@ -38,6 +38,19 @@ import {
 import { inTransaction, numberColumn, textColumn } from './db.js';
 import { errorFields } from './errors.js';
 import {
+  clearSpool,
+  findByIdempotencyKey,
+  insertQueuedJob,
+  listJobRows,
+  readInputs,
+  readPayloads,
+  readSpool,
+  spooledJobIds,
+  transitionJob,
+  writeInputs,
+  writeSpool,
+} from './job-store.js';
+import {
   ASSET_SELECT,
   assetFromRow,
   getAssetRow,
@@ -57,7 +70,14 @@ import {
   type AssetPageRecord,
   type AssetRecord,
   type FinishedJob,
+  type FinishedJobInput,
   type ImportedJob,
+  type JobChange,
+  type JobFilter,
+  type JobPageRecord,
+  type JobPayloads,
+  type JobState,
+  type SpooledResult,
   type JobRecord,
   type JobStore,
   type Library,
@@ -212,6 +232,15 @@ export class LocalLibrary implements Library, JobStore {
     return queryAssetRows(this.db, filter);
   }
 
+  jobOutputs(jobId: string): AssetRecord[] {
+    return this.db
+      .prepare(
+        `${ASSET_SELECT} join job_outputs jo on jo.asset_id = a.id where jo.job_id = ? order by jo.output_index`,
+      )
+      .all(jobId)
+      .map(assetFromRow);
+  }
+
   provenance(id: string): ProvenanceRecord | undefined {
     return provenanceRows(this.db, id);
   }
@@ -237,35 +266,55 @@ export class LocalLibrary implements Library, JobStore {
 
   insertQueued(job: NewJob): JobRecord {
     this.requireWritable();
-    inTransaction(this.db, () => {
-      this.db
-        .prepare(
-          `insert into jobs (id, parent_id, client_id, end_user, collection, idempotency_key,
-             priority, queue_rank, state, model_id, route_id, created_at, updated_at)
-           values (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`,
-        )
-        .run(
-          job.id,
-          job.parentId ?? null,
-          job.clientId ?? null,
-          job.endUser ?? null,
-          job.collection ?? null,
-          job.idempotencyKey ?? null,
-          job.priority ?? 0,
-          job.queueRank ?? null,
-          job.modelId,
-          job.routeId ?? null,
-          job.createdAt,
-          job.createdAt,
-        );
-      this.db
-        .prepare('insert into job_payloads (job_id, canonical) values (?, ?)')
-        .run(job.id, JSON.stringify(job.canonical));
-      this.indexPrompt(job.id, job.canonical.prompt);
-    });
+    insertQueuedJob(this.db, job);
     const stored = this.getJob(job.id);
     if (stored === undefined) throw new Error(`Job ${job.id} was not stored.`);
     return stored;
+  }
+
+  findByIdempotencyKey(clientId: string | null, key: string): JobRecord | undefined {
+    return findByIdempotencyKey(this.db, clientId, key);
+  }
+
+  listJobs(filter: JobFilter): JobPageRecord {
+    return listJobRows(this.db, filter);
+  }
+
+  payloads(id: string): JobPayloads | undefined {
+    return readPayloads(this.db, id);
+  }
+
+  inputs(id: string): FinishedJobInput[] {
+    return readInputs(this.db, id);
+  }
+
+  replaceInputs(id: string, inputs: readonly FinishedJobInput[]): void {
+    this.requireWritable();
+    inTransaction(this.db, () => {
+      writeInputs(this.db, id, inputs);
+    });
+  }
+
+  transition(id: string, from: readonly JobState[], change: JobChange): JobRecord | undefined {
+    this.requireWritable();
+    return transitionJob(this.db, id, from, change, this.now());
+  }
+
+  async spool(id: string, result: SpooledResult): Promise<void> {
+    this.requireWritable();
+    await writeSpool(this.paths, id, result);
+  }
+
+  async readSpool(id: string): Promise<SpooledResult | null> {
+    return await readSpool(this.paths, id);
+  }
+
+  async clearSpool(id: string): Promise<void> {
+    await clearSpool(this.paths, id);
+  }
+
+  async spooledJobs(): Promise<string[]> {
+    return await spooledJobIds(this.paths);
   }
 
   /** The prompt index row; a job already indexed keeps its row. Inside a transaction. */
@@ -363,23 +412,7 @@ export class LocalLibrary implements Library, JobStore {
           );
         this.indexPrompt(job.id, job.canonical.prompt);
 
-        this.db.prepare('delete from job_inputs where job_id = ?').run(job.id);
-        const insertInput = this.db.prepare(
-          `insert into job_inputs (job_id, position, asset_id, role, weight, region, crop, source_library)
-           values (?, ?, ?, ?, ?, ?, ?, ?)`,
-        );
-        for (const input of job.inputs) {
-          insertInput.run(
-            job.id,
-            input.position,
-            input.assetId,
-            input.role,
-            input.weight ?? null,
-            toJson(input.region),
-            toJson(input.crop),
-            input.sourceLibrary ?? null,
-          );
-        }
+        writeInputs(this.db, job.id, job.inputs);
 
         const insertOutput = this.db.prepare(
           `insert into job_outputs (job_id, output_index, asset_id, seed) values (?, ?, ?, ?)

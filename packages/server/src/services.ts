@@ -12,6 +12,7 @@
 import type { AuthMode } from '@bureaucromancer/lantern-schema';
 
 import type { ModelCatalog } from './engine/catalog/index.js';
+import type { EventBus, JobEngine } from './engine/jobs/index.js';
 import type { Resolver } from './engine/resolver/index.js';
 import type { LibraryRegistry } from './store/index.js';
 
@@ -69,6 +70,10 @@ export interface AppServices {
   readonly libraries: LibraryRegistry;
   /** Models and their routes. An in-memory seam until Phase 5 gives them tables. */
   readonly models: ModelCatalog;
-  /** Resolves requests against the models' routes, for the dry run and (Phase 4) submit. */
+  /** Resolves requests against the models' routes, for the dry run and submit. */
   readonly resolver: Resolver;
+  /** Runs jobs: submit, cancel, rerun, the queue. Started before the daemon listens. */
+  readonly engine: JobEngine;
+  /** What `GET /api/v1/events` streams. */
+  readonly events: EventBus;
 }

@@ -7,6 +7,7 @@ export * from './assets.js';
 export * from './errors.js';
 export * from './health.js';
 export * from './info.js';
+export * from './jobs.js';
 export * from './libraries.js';
 export * from './openapi.js';
 export * from './resolve.js';

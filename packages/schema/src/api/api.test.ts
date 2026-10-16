@@ -19,23 +19,31 @@ const routes = Object.entries(api as Record<string, unknown>).filter(
 describe('the route contracts', () => {
   it('are all found', () => {
     expect(routes.map(([name]) => name).sort()).toEqual([
+      'CancelJobRoute',
       'CreateLibraryRoute',
       'DeleteAssetRoute',
+      'EventsRoute',
       'GetAssetRoute',
       'GetHealthRoute',
       'GetInfoRoute',
+      'GetJobRoute',
       'GetLineageRoute',
       'GetOpenApiRoute',
       'GetProvenanceRoute',
+      'GetQueueRoute',
       'GetSessionRoute',
       'GetThumbnailRoute',
       'ListAssetsRoute',
+      'ListJobsRoute',
       'ListLibrariesRoute',
       'LoginRoute',
       'LogoutRoute',
       'PatchAssetRoute',
       'RenameLibraryRoute',
+      'ReproduceJobRoute',
+      'RerollJobRoute',
       'ResolveRoute',
+      'SubmitJobRoute',
       'UploadAssetRoute',
     ]);
   });
@@ -99,13 +107,17 @@ describe('the route contracts', () => {
     const safe = new Set<string>(['GET', 'HEAD', 'OPTIONS']);
     const changing = routes.filter(([, route]) => !safe.has(route.method));
     expect(changing.map(([name]) => name).sort()).toEqual([
+      'CancelJobRoute',
       'CreateLibraryRoute',
       'DeleteAssetRoute',
       'LoginRoute',
       'LogoutRoute',
       'PatchAssetRoute',
       'RenameLibraryRoute',
+      'ReproduceJobRoute',
+      'RerollJobRoute',
       'ResolveRoute',
+      'SubmitJobRoute',
       'UploadAssetRoute',
     ]);
 

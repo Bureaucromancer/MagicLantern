@@ -60,6 +60,7 @@ import { suggestValue } from './suggest.js';
 import type {
   FieldValues,
   FinaliseOutcome,
+  FinaliseSource,
   PrepareHook,
   Resolution,
   ResolveFailure,
@@ -109,7 +110,7 @@ export interface Resolver {
    * @param model the model as it is now
    */
   finalise(
-    provisional: Resolution,
+    provisional: FinaliseSource,
     model: ResolverModel,
     options?: FinaliseOptions,
   ): Promise<FinaliseOutcome>;
@@ -181,6 +182,12 @@ function seedRange(mode: ModeDescriptor): { lower: number; upper: number } {
     }
   }
   return { lower, upper };
+}
+
+function seedOf(provisional: FinaliseSource): number {
+  const seed = provisional.effective.sampling.seed;
+  if (typeof seed !== 'number') throw new Error('A provisional resolution has a concrete seed.');
+  return seed;
 }
 
 export function createResolver(options: ResolverOptions): Resolver {
@@ -378,7 +385,7 @@ export function createResolver(options: ResolverOptions): Resolver {
   }
 
   async function finalise(
-    provisional: Resolution,
+    provisional: FinaliseSource,
     model: ResolverModel,
     finaliseOptions: FinaliseOptions = {},
   ): Promise<FinaliseOutcome> {
@@ -416,7 +423,7 @@ export function createResolver(options: ResolverOptions): Resolver {
         route: routeId,
         ...(finaliseOptions.preset === undefined ? {} : { preset: finaliseOptions.preset }),
       },
-      { fixed: provisional.effective.sampling.seed as number },
+      { fixed: seedOf(provisional) },
     );
     if (!outcome.ok) {
       const issues = outcome.failure.kind === 'invalid' ? outcome.failure.issues : [];

@@ -10,8 +10,22 @@
  */
 
 import {
+  CancelJobRoute,
   CreateLibraryRoute,
   DeleteAssetRoute,
+  EventsRoute,
+  GetJobRoute,
+  GetQueueRoute,
+  ListJobsRoute,
+  ReproduceJobRoute,
+  RerollJobRoute,
+  SubmitJobRoute,
+  type JobDetail,
+  type JobPage,
+  type JobSummary,
+  type QueueResponse,
+  type SubmitBody,
+  type SubmitResponse,
   fillPath,
   GetAssetRoute,
   GetHealthRoute,
@@ -47,6 +61,7 @@ import {
 } from '@bureaucromancer/lantern-schema';
 
 import { INVALID_RESPONSE_CODE, LanternApiError, refusalFrom } from './errors.js';
+import { createEventParser, type LanternStreamEvent } from './events.js';
 
 export interface LanternClientOptions {
   /**
@@ -150,6 +165,49 @@ export interface LanternClient {
   assetUrl(lib: string, asset: string): string;
   /** The URL of an asset's thumbnail, for an `<img src>`. */
   thumbnailUrl(lib: string, asset: string): string;
+  /**
+   * `POST /api/v1/libraries/{lib}/jobs`. Resolves to the queued job (or, for
+   * an idempotency key already used with this body, that job, `replayed`).
+   * Rejects with `invalid` (422) or `conflict` (409).
+   */
+  submitJob(lib: string, body: SubmitBody, options?: SubmitOptions): Promise<SubmitResponse>;
+  /** `GET …/jobs`: history, newest first. */
+  listJobs(lib: string, options?: ListJobsOptions): Promise<JobPage>;
+  /** `GET …/jobs/{id}`: one job with its payloads and outputs. */
+  getJob(lib: string, job: string, options?: RequestOptions): Promise<JobDetail>;
+  /** `POST …/jobs/{id}/cancel`: the job as it now is; the end arrives as an event. */
+  cancelJob(lib: string, job: string, options?: RequestOptions): Promise<JobSummary>;
+  /** `POST …/jobs/{id}/reproduce`. */
+  reproduceJob(lib: string, job: string, options?: RequestOptions): Promise<SubmitResponse>;
+  /** `POST …/jobs/{id}/reroll`. */
+  rerollJob(lib: string, job: string, options?: RequestOptions): Promise<SubmitResponse>;
+  /** `GET /api/v1/queue`: the live queue; `library`'s jobs in full, others collapsed. */
+  queue(library?: string, options?: RequestOptions): Promise<QueueResponse>;
+  /**
+   * `GET /api/v1/events`: calls `onEvent` for each event until the stream
+   * ends or `signal` aborts, and resolves with the last event id seen, to
+   * pass as `lastEventId` when reconnecting. A `reset` event means refetch.
+   */
+  streamEvents(
+    onEvent: (event: LanternStreamEvent) => void,
+    options?: StreamOptions,
+  ): Promise<string | null>;
+}
+
+export interface SubmitOptions extends RequestOptions {
+  /** Sent as `Idempotency-Key`: a retry with the same key never makes a second job. */
+  idempotencyKey?: string;
+}
+
+export interface ListJobsOptions extends RequestOptions {
+  state?: 'live' | 'finished';
+  limit?: number;
+  cursor?: string;
+}
+
+export interface StreamOptions extends RequestOptions {
+  /** Replays what came after this id (`Last-Event-ID`). */
+  lastEventId?: string;
 }
 
 /** A request body: JSON, or a form the browser encodes as multipart with its own boundary. */
@@ -234,11 +292,13 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
     path: string,
     body: Body | undefined,
     requestOptions: RequestOptions | undefined,
+    callHeaders: Readonly<Record<string, string>> = {},
   ): Promise<{ status: number; payload: unknown }> {
     // A Headers object rather than a record, because names are case-insensitive:
     // a caller's `Accept` beside our `accept` would be sent as one merged value.
     // The two headers that describe the exchange are the client's to set.
     const headers = new Headers(extraHeaders);
+    for (const [name, value] of Object.entries(callHeaders)) headers.set(name, value);
     headers.set('accept', 'application/json');
     const init: RequestInit = {
       method,
@@ -293,8 +353,9 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
     path: string,
     requestOptions: RequestOptions | undefined,
     body?: Body,
+    callHeaders?: Readonly<Record<string, string>>,
   ): Promise<unknown> {
-    const { status, payload } = await send(method, path, body, requestOptions);
+    const { status, payload } = await send(method, path, body, requestOptions, callHeaders);
     if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
       throw new LanternApiError(
         status,
@@ -411,5 +472,96 @@ export function createLanternClient(options: LanternClientOptions = {}): Lantern
     },
     assetUrl: (lib, asset) => `${baseUrl}${fillPath(GetAssetRoute.path, { lib, asset })}`,
     thumbnailUrl: (lib, asset) => `${baseUrl}${fillPath(GetThumbnailRoute.path, { lib, asset })}`,
+    submitJob: async (lib, body, submitOptions = {}) =>
+      (await sendForBody(
+        SubmitJobRoute.method,
+        fillPath(SubmitJobRoute.path, { lib }),
+        submitOptions,
+        { json: body },
+        submitOptions.idempotencyKey === undefined
+          ? {}
+          : { 'idempotency-key': submitOptions.idempotencyKey },
+      )) as SubmitResponse,
+    listJobs: async (lib, listOptions = {}) => {
+      const params = new URLSearchParams();
+      if (listOptions.state !== undefined) params.append('state', listOptions.state);
+      if (listOptions.limit !== undefined) params.append('limit', String(listOptions.limit));
+      if (listOptions.cursor !== undefined) params.append('cursor', listOptions.cursor);
+      const query = params.toString();
+      return (await sendForBody(
+        ListJobsRoute.method,
+        `${fillPath(ListJobsRoute.path, { lib })}${query === '' ? '' : `?${query}`}`,
+        listOptions,
+      )) as JobPage;
+    },
+    getJob: async (lib, job, requestOptions) =>
+      (await sendForBody(
+        GetJobRoute.method,
+        fillPath(GetJobRoute.path, { lib, job }),
+        requestOptions,
+      )) as JobDetail,
+    cancelJob: async (lib, job, requestOptions) =>
+      (await sendForBody(
+        CancelJobRoute.method,
+        fillPath(CancelJobRoute.path, { lib, job }),
+        requestOptions,
+      )) as JobSummary,
+    reproduceJob: async (lib, job, requestOptions) =>
+      (await sendForBody(
+        ReproduceJobRoute.method,
+        fillPath(ReproduceJobRoute.path, { lib, job }),
+        requestOptions,
+      )) as SubmitResponse,
+    rerollJob: async (lib, job, requestOptions) =>
+      (await sendForBody(
+        RerollJobRoute.method,
+        fillPath(RerollJobRoute.path, { lib, job }),
+        requestOptions,
+      )) as SubmitResponse,
+    queue: async (library, requestOptions) =>
+      (await sendForBody(
+        GetQueueRoute.method,
+        `${GetQueueRoute.path}${library === undefined ? '' : `?library=${encodeURIComponent(library)}`}`,
+        requestOptions,
+      )) as QueueResponse,
+    streamEvents: async (onEvent, streamOptions = {}) => {
+      const headers = new Headers(extraHeaders);
+      headers.set('accept', 'text/event-stream');
+      if (streamOptions.lastEventId !== undefined) {
+        headers.set('last-event-id', streamOptions.lastEventId);
+      }
+      const init: RequestInit = { method: 'GET', headers, credentials: 'same-origin' };
+      if (streamOptions.signal !== undefined) init.signal = streamOptions.signal;
+      const response = await doFetch(`${baseUrl}${EventsRoute.path}`, init);
+      if (!response.ok) {
+        const text = await response.text();
+        let payload: unknown;
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = undefined;
+        }
+        throw refusalFrom(response.status, payload);
+      }
+      let lastId: string | null = streamOptions.lastEventId ?? null;
+      const parse = createEventParser((event) => {
+        if (event.id !== null) lastId = event.id;
+        onEvent(event);
+      });
+      if (response.body === null) return lastId;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          parse(decoder.decode(value, { stream: true }));
+        }
+      } catch (error) {
+        // An abort ends the stream as the caller asked; anything else is theirs to see.
+        if (!(streamOptions.signal?.aborted ?? false)) throw error;
+      }
+      return lastId;
+    },
   };
 }

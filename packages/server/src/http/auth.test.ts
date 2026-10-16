@@ -161,6 +161,8 @@ describe('caching', () => {
     const server = await start({ password: PASSWORD });
     const contracts = apiContracts
       .filter((route) => server.app.hasRoute({ method: route.method, url: route.path }))
+      // The event stream never ends, so inject cannot wait for it; its own tests check its headers.
+      .filter((route) => route.path !== api.EventsRoute.path)
       // Signing out last, so every other route is asked while still signed in.
       .sort((a, b) => Number(a.method === 'DELETE') - Number(b.method === 'DELETE'));
     expect(contracts.length).toBeGreaterThan(3);

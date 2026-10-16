@@ -140,7 +140,31 @@ export function fakeClient(initial: Partial<FakeDaemonState> = {}): {
     thumbnailUrl: vi.fn<LanternClient['thumbnailUrl']>(
       (lib, asset) => `/api/v1/libraries/${lib}/assets/${asset}/thumb`,
     ),
+    // The fake daemon knows no models, so it runs no jobs.
+    submitJob: vi.fn<LanternClient['submitJob']>(() =>
+      gate().then(() =>
+        Promise.reject(
+          new LanternApiError(422, 'invalid', 'The body is not valid.', [
+            { path: '/model', message: 'is not a known model' },
+          ]),
+        ),
+      ),
+    ),
+    listJobs: vi.fn<LanternClient['listJobs']>(() =>
+      gate().then(() => ({ jobs: [], next_cursor: null })),
+    ),
+    getJob: vi.fn<LanternClient['getJob']>(() => noJob()),
+    cancelJob: vi.fn<LanternClient['cancelJob']>(() => noJob()),
+    reproduceJob: vi.fn<LanternClient['reproduceJob']>(() => noJob()),
+    rerollJob: vi.fn<LanternClient['rerollJob']>(() => noJob()),
+    queue: vi.fn<LanternClient['queue']>(() => gate().then(() => ({ entries: [] }))),
+    // A stream that ends at once, having said nothing.
+    streamEvents: vi.fn<LanternClient['streamEvents']>(() => gate().then(() => null)),
   };
+
+  function noJob(): Promise<never> {
+    return gate().then(() => Promise.reject(new LanternApiError(404, 'not-found', 'No such job.')));
+  }
 
   function noAsset(): Promise<never> {
     return gate().then(() =>

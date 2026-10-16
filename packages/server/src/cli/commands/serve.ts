@@ -42,7 +42,15 @@ import {
   type AppRootResolution,
 } from '../../config/app-root.js';
 import type { ResolvedConfig } from '../../config/schema.js';
-import { DEV_MODEL_ID, isDevMode, startupModelCatalog } from '../../engine/catalog/index.js';
+import {
+  devBackend,
+  devMockProfile,
+  DEV_MODEL_ID,
+  isDevMode,
+  startupModelCatalog,
+} from '../../engine/catalog/index.js';
+import { EventBus, JobEngine, StaticBindings } from '../../engine/jobs/index.js';
+import type { MockProfile } from '../../adapters/mock/index.js';
 import { builtinProfiles } from '../../engine/profiles/index.js';
 import { createResolver } from '../../engine/resolver/index.js';
 import { unhandledShape } from '../../http/errors.js';
@@ -339,6 +347,21 @@ export function createServeCommand(options: ServeOptions = {}): Command {
 
       // Profiles load (and are validated) here, so a bad built-in fails the start.
       const profiles = builtinProfiles();
+      const devProfile = devProfileOf(context.env);
+      // Phase 5 replaces the in-memory catalog and bindings with the install database.
+      const models = startupModelCatalog(context.env, profiles);
+      const resolver = createResolver({ ajv: createValidator(), profiles });
+      const events = new EventBus(processId);
+      const bindings =
+        devProfile === null ? [] : [(await devBackend({ profile: devProfile })).binding];
+      const engine = new JobEngine({
+        libraries,
+        models,
+        resolver,
+        bindings: new StaticBindings(bindings),
+        events,
+        log: storeLog,
+      });
       const builtApp = await buildApp(
         {
           version: readServerVersion(),
@@ -349,9 +372,10 @@ export function createServeCommand(options: ServeOptions = {}): Command {
             cookieSecure: config.auth.cookieSecure,
           }),
           libraries,
-          // Phase 5 replaces the in-memory catalog with the install database.
-          models: startupModelCatalog(context.env, profiles),
-          resolver: createResolver({ ajv: createValidator(), profiles }),
+          models,
+          resolver,
+          engine,
+          events,
         },
         {
           config,
@@ -362,14 +386,18 @@ export function createServeCommand(options: ServeOptions = {}): Command {
       );
       app = builtApp;
       storeLog.attach(storeLogFrom(builtApp.log));
+      // Closed after the app (no request is mid-submit) and before the libraries.
+      closers.push({ name: 'job engine', close: () => engine.stop() });
       closers.push({ name: 'app', close: () => closeApp(builtApp, backstopMs) });
       logStartup(builtApp.log, config, auth, appRoot);
-      if (isDevMode(context.env)) {
+      if (devProfile !== null) {
         builtApp.log.warn(
-          { event: 'dev-mode', models: [DEV_MODEL_ID] },
-          'LANTERN_DEV=1: serving the development model catalog (one mock route)',
+          { event: 'dev-mode', models: [DEV_MODEL_ID], mockProfile: devProfile },
+          `LANTERN_DEV=1: serving the development model on the mock backend (profile ${devProfile})`,
         );
       }
+      // Recovers what the last run left (spools, dispatched jobs), then dispatches.
+      await engine.start();
 
       try {
         await builtApp.listen({ host: config.host, port: config.port });
@@ -450,6 +478,16 @@ export function createServeCommand(options: ServeOptions = {}): Command {
       signals?.on('SIGTERM', onTerminate);
     });
   };
+}
+
+/** The mock profile under `LANTERN_DEV=1`, else null; an unknown profile is a usage error. */
+function devProfileOf(env: CommandContext['env']): MockProfile | null {
+  if (!isDevMode(env)) return null;
+  try {
+    return devMockProfile(env);
+  } catch (error) {
+    throw new UsageError(error instanceof Error ? error.message : String(error));
+  }
 }
 
 /** An empty variable is unset (compose forwards an unset host variable as ''). */

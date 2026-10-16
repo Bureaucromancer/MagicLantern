@@ -3,14 +3,24 @@
 
 /**
  * The development catalog, served with `LANTERN_DEV=1` (D6): one SDXL model on
- * one route of the `mock` backend kind, so the dry run works end to end before
- * any backend exists. The mock adapter itself arrives in Phase 4 (EN2), and
- * Phase 5 replaces the catalog with the install database; until then this is
- * the only model a development daemon knows. A normal start has no models.
+ * one route of the mock backend kind (adapters/mock), so jobs run end to end
+ * before any real backend exists. Phase 5 replaces the catalog with the
+ * install database; until then this is the only model a development daemon
+ * knows. A normal start has no models.
  */
 
-import type { ModeDescriptor, RouteDescriptor } from '@bureaucromancer/lantern-schema';
-
+import {
+  isMockProfile,
+  MOCK_MODEL_IDENTITY,
+  MOCK_PROFILES,
+  MOCK_ROUTE_ID,
+  MockAdapter,
+  mockRouteDescriptor,
+  type MockOptions,
+  type MockProfile,
+  type MockSettings,
+} from '../../adapters/mock/index.js';
+import type { RouteBinding } from '../jobs/bindings.js';
 import type { ProfileRegistry } from '../profiles/index.js';
 import { type CatalogModel, InMemoryModelCatalog } from './catalog.js';
 
@@ -20,72 +30,77 @@ export function isDevMode(env: Readonly<Record<string, string | undefined>>): bo
 }
 
 export const DEV_MODEL_ID = 'mdl_dev_sdxl';
-export const DEV_ROUTE_ID = 'rt_dev_mock';
-
-const COMMON: ModeDescriptor['fields'] = {
-  'prompt.positive': { state: 'native' },
-  'prompt.negative': { state: 'native' },
-  'sampling.seed': { state: 'native', maximum: 2 ** 32 - 1 },
-  'sampling.steps': { state: 'native', minimum: 1, maximum: 150, default: 20 },
-  'sampling.cfg': { state: 'native', maximum: 30, default: 7 },
-  'sampling.sampler': {
-    state: 'native',
-    enum: ['euler', 'euler_a', 'dpm++2m', 'lcm'],
-    default: 'euler_a',
-  },
-  'sampling.scheduler': { state: 'native', enum: ['discrete', 'karras'], default: 'discrete' },
-  'sampling.clip_skip': { state: 'ignored', reason: 'The mock backend draws no text encoder.' },
-  count: { state: 'native', native_max: 4, emulated_max: 8, default: 1 },
-};
-
-const CONTROL: ModeDescriptor['control'] = {
-  cancel_queued: true,
-  cancel_running: true,
-  progress: 'fraction',
-};
+export const DEV_ROUTE_ID = MOCK_ROUTE_ID;
+/** The mock backend's id, which is also its resource group. */
+export const DEV_BACKEND_ID = 'be_dev_mock';
 
 /** The mock route's `describe()` result. */
-export const DEV_ROUTE_DESCRIPTOR: RouteDescriptor = {
-  route: DEV_ROUTE_ID,
-  modes: {
-    txt2img: {
-      fields: {
-        ...COMMON,
-        'geometry.width': { state: 'native', minimum: 256, maximum: 2048, multipleOf: 64 },
-        'geometry.height': { state: 'native', minimum: 256, maximum: 2048, multipleOf: 64 },
-      },
-      extensions: {
-        mock: { type: 'object', properties: { delay_ms: { type: 'integer', minimum: 0 } } },
-      },
-      control: CONTROL,
-    },
-    img2img: {
-      fields: {
-        ...COMMON,
-        'sampling.denoise': { state: 'native', default: 0.75 },
-        'inputs.init.asset_id': { state: 'native' },
-        'inputs.init.crop': { state: 'emulated', reason: 'Lantern crops before sending.' },
-      },
-      inputs: { init: { state: 'native', min: 1, max: 1, media: ['image/*'] } },
-      control: CONTROL,
-    },
-  },
-};
+export const DEV_ROUTE_DESCRIPTOR = mockRouteDescriptor(DEV_ROUTE_ID);
 
-/** The development model. */
-export const DEV_MODEL: CatalogModel = {
-  id: DEV_MODEL_ID,
-  family: 'sdxl',
-  routes: [
-    {
-      id: DEV_ROUTE_ID,
-      backend_kind: 'mock',
-      priority: 0,
-      health: { status: 'ok', load_state: 'loaded' },
-      describe: DEV_ROUTE_DESCRIPTOR,
+export const DEV_BASE_URL = 'mock://dev';
+
+/** The development model, its route described as the mock profile describes it. */
+export function devModel(profile: MockProfile = 'basic'): CatalogModel {
+  return {
+    id: DEV_MODEL_ID,
+    family: 'sdxl',
+    routes: [
+      {
+        id: DEV_ROUTE_ID,
+        backend_kind: 'mock',
+        priority: 0,
+        health: { status: 'ok', load_state: profile === 'orchd' ? 'cold' : 'loaded' },
+        describe: mockRouteDescriptor(DEV_ROUTE_ID, profile),
+        fingerprint: MOCK_MODEL_IDENTITY,
+      },
+    ],
+  };
+}
+
+/** The development model under the default profile. */
+export const DEV_MODEL: CatalogModel = devModel();
+
+/**
+ * The mock profile a development daemon runs (`LANTERN_DEV_MOCK_PROFILE`),
+ * `basic` by default.
+ *
+ * @throws Error naming the profiles for an unknown one
+ */
+export function devMockProfile(env: Readonly<Record<string, string | undefined>>): MockProfile {
+  const value = env['LANTERN_DEV_MOCK_PROFILE'];
+  if (value === undefined || value === '') return 'basic';
+  if (!isMockProfile(value)) {
+    throw new Error(
+      `LANTERN_DEV_MOCK_PROFILE is "${value}"; it must be one of ${MOCK_PROFILES.join(', ')}.`,
+    );
+  }
+  return value;
+}
+
+/** The mock backend, initialised, and its route's binding. */
+export async function devBackend(
+  settings: MockSettings = {},
+  options: MockOptions = {},
+): Promise<{ adapter: MockAdapter; binding: RouteBinding }> {
+  const adapter = new MockAdapter(options);
+  await adapter.init({
+    backendId: DEV_BACKEND_ID,
+    baseUrl: DEV_BASE_URL,
+    settings: { ...settings },
+  });
+  return {
+    adapter,
+    binding: {
+      routeId: DEV_ROUTE_ID,
+      backendId: DEV_BACKEND_ID,
+      backendKind: 'mock',
+      baseUrl: DEV_BASE_URL,
+      adapter,
+      resourceGroup: DEV_BACKEND_ID,
+      concurrency: 1,
     },
-  ],
-};
+  };
+}
 
 /**
  * The catalog a daemon starts with: the development model under
@@ -98,5 +113,5 @@ export function startupModelCatalog(
   env: Readonly<Record<string, string | undefined>>,
   profiles: ProfileRegistry,
 ): InMemoryModelCatalog {
-  return new InMemoryModelCatalog(isDevMode(env) ? [DEV_MODEL] : [], profiles);
+  return new InMemoryModelCatalog(isDevMode(env) ? [devModel(devMockProfile(env))] : [], profiles);
 }

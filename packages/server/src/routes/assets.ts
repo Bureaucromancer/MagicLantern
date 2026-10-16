@@ -29,7 +29,6 @@ import {
   type AssetLineage,
   type AssetPage,
   type AssetProvenance,
-  type AssetSummary,
   type ValidationIssue,
 } from '@bureaucromancer/lantern-schema';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -41,45 +40,14 @@ import {
   THUMBNAIL_MEDIA_TYPE,
   type AssetBytes,
   type AssetFilter,
-  type AssetRecord,
   type LineageRecord,
   type ProvenanceRecord,
 } from '../store/index.js';
 import { createValidator } from '../validation/ajv.js';
+import { iso, toAssetSummary } from '../wire.js';
 import { isReply, libraryFor } from './libraries.js';
 
 const MEGABYTE = 1024 * 1024;
-
-function iso(ms: number): string {
-  return new Date(ms).toISOString();
-}
-
-export function toAssetSummary(asset: AssetRecord): AssetSummary {
-  return {
-    id: asset.id,
-    media_type: asset.mediaType,
-    bytes: asset.bytes,
-    width: asset.width,
-    height: asset.height,
-    frames: asset.frames,
-    origin: asset.origin,
-    bytes_state: asset.bytesState,
-    retention: asset.retention,
-    rating: asset.rating,
-    pixel_hash: asset.pixelHash,
-    pixel_hash_alg: asset.pixelHashAlg,
-    created_at: iso(asset.createdAt),
-    output_of:
-      asset.outputOf === null
-        ? null
-        : {
-            job_id: asset.outputOf.jobId,
-            index: asset.outputOf.index,
-            seed: asset.outputOf.seed,
-            model_id: asset.outputOf.modelId,
-          },
-  };
-}
 
 export function toProvenance(record: ProvenanceRecord): AssetProvenance {
   const { asset, job } = record;

@@ -123,8 +123,68 @@ export interface NewJob extends JobOrigin {
   readonly modelId: string;
   readonly routeId?: string;
   readonly canonical: GenerationRequest;
+  /** The provisional resolution at submit (A12): the seed is fixed here. */
+  readonly effective?: GenerationRequest;
+  readonly fieldReport?: unknown;
+  /** The provisional snapshot: model identity and digests, rewritten at dispatch. */
+  readonly routeSnapshot?: unknown;
+  /** The inputs, already in this library. */
+  readonly inputs?: readonly FinishedJobInput[];
   /** Epoch milliseconds. */
   readonly createdAt: number;
+}
+
+/**
+ * One change to a job, written with its row in one transaction. Absent fields
+ * are left as they are; `null` clears a column.
+ */
+export interface JobChange {
+  readonly state?: JobState;
+  readonly blockedReason?: unknown;
+  readonly outcome?: JobOutcome;
+  readonly outcomeReason?: string | null;
+  readonly routeId?: string | null;
+  readonly routeSnapshot?: unknown;
+  readonly backendHandle?: unknown;
+  readonly progress?: unknown;
+  readonly priority?: number;
+  readonly startedAt?: number | null;
+  readonly finishedAt?: number | null;
+  /** `job_payloads` columns, written in the same transaction. */
+  readonly effective?: GenerationRequest;
+  readonly fieldReport?: unknown;
+  readonly wire?: unknown;
+  readonly backendResponse?: unknown;
+}
+
+/** A job's stored payloads (plan, "Provenance"). */
+export interface JobPayloads {
+  readonly canonical: GenerationRequest;
+  readonly effective: GenerationRequest | null;
+  readonly fieldReport: unknown;
+  readonly wire: unknown;
+  readonly backendResponse: unknown;
+}
+
+/** A finished job's results, spooled to disk before they are ingested (A17). */
+export interface SpooledResult {
+  readonly outputs: readonly FinishedJobOutput[];
+  readonly metadata: unknown;
+  readonly generator?: string;
+  /** Epoch milliseconds: when the backend said it was done. */
+  readonly finishedAt: number;
+}
+
+export interface JobFilter {
+  readonly limit: number;
+  /** The last job of the previous page. */
+  readonly after?: { readonly createdAt: number; readonly id: string };
+  readonly state?: 'live' | 'finished';
+}
+
+export interface JobPageRecord {
+  readonly jobs: readonly JobRecord[];
+  readonly next: { readonly createdAt: number; readonly id: string } | null;
 }
 
 /** The narrow row the queue and history read. */
@@ -153,17 +213,40 @@ export interface JobRecord {
 }
 
 /**
- * Live dispatch state (A18). Phase 3 gives the scheduler what it needs to
- * load and file jobs; the state machine's one transition function (EN4)
- * arrives with the engine.
+ * Live dispatch state (A18): always local, owned by the scheduler. The
+ * engine's one transition function (engine/jobs/transitions.ts) is the only
+ * caller of {@link JobStore.transition}.
  */
 export interface JobStore {
   readonly libraryId: string;
-  /** Files a queued job with its canonical request, and indexes its prompt, in one transaction. */
+  /**
+   * Files a queued job with its canonical request, its provisional
+   * resolution, its inputs and its prompt index, in one transaction.
+   */
   insertQueued(job: NewJob): JobRecord;
   getJob(id: string): JobRecord | undefined;
+  /** The job a client filed under an idempotency key, if any. */
+  findByIdempotencyKey(clientId: string | null, key: string): JobRecord | undefined;
   /** Every job that has not finished, oldest first: the scheduler's load at startup. */
   liveJobs(): JobRecord[];
+  /** History, newest first, by a `(created_at, id)` cursor. */
+  listJobs(filter: JobFilter): JobPageRecord;
+  payloads(id: string): JobPayloads | undefined;
+  inputs(id: string): FinishedJobInput[];
+  /** Replaces a job's inputs (a crop swapped for its derived asset at dispatch). */
+  replaceInputs(id: string, inputs: readonly FinishedJobInput[]): void;
+  /**
+   * Applies a change if the job is in one of `from`, atomically, and answers
+   * the job as changed; undefined when it was not (another change won).
+   */
+  transition(id: string, from: readonly JobState[], change: JobChange): JobRecord | undefined;
+  /** Writes a finished job's results to `incoming/<job>/`, durably, before ingest (A17). */
+  spool(id: string, result: SpooledResult): Promise<void>;
+  /** A whole spool, or null when there is none (or it was cut off before it was whole). */
+  readSpool(id: string): Promise<SpooledResult | null>;
+  clearSpool(id: string): Promise<void>;
+  /** The jobs with a whole spool, for recovery. */
+  spooledJobs(): Promise<string[]>;
 }
 
 /** One input of a finished job, already in this library (submit copies foreign ones in). */
@@ -301,6 +384,13 @@ export interface Library {
   readThumbnail(id: string): Promise<AssetBytes>;
   queryAssets(filter: AssetFilter): AssetPageRecord;
   provenance(id: string): ProvenanceRecord | undefined;
+  /** A job's stored outputs, by index. */
+  jobOutputs(jobId: string): AssetRecord[];
+  /** Job history, read-only: a read-only library still answers these. */
+  getJob(id: string): JobRecord | undefined;
+  listJobs(filter: JobFilter): JobPageRecord;
+  payloads(id: string): JobPayloads | undefined;
+  inputs(id: string): FinishedJobInput[];
   lineage(id: string): LineageRecord | undefined;
 
   /**

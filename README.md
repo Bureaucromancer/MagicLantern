@@ -32,6 +32,10 @@ pnpm install
 pnpm dev          # daemon on :7600 (data in ./data) and Vite on http://localhost:5173
 ```
 
+With `LANTERN_DEV=1` in the environment, the daemon also serves a development model on a mock
+backend, so jobs run end to end with no real backend; `LANTERN_DEV_MOCK_PROFILE` picks how the
+mock behaves (`basic`, `sdserver`, `sync`, `port_reuse`, `lost` or `orchd`).
+
 `pnpm dev` builds the shared packages first; after editing `schema`, `client` or `react`, run
 `pnpm dev:deps` again.
 

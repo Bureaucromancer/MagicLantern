@@ -44,6 +44,10 @@ export const OPENAPI_TAGS = [
       "A library's content-addressed images: uploads, outputs and crops, with provenance and lineage.",
   },
   {
+    name: 'jobs',
+    description: 'Submitting and following generations: jobs, the live queue and the event stream.',
+  },
+  {
     name: 'generation',
     description: 'Resolving generation requests against models and their routes.',
   },
@@ -178,6 +182,12 @@ export function openApiStubServices(): AppServices {
     },
     get resolver(): AppServices['resolver'] {
       return unavailable('services.resolver');
+    },
+    get engine(): AppServices['engine'] {
+      return unavailable('services.engine');
+    },
+    get events(): AppServices['events'] {
+      return unavailable('services.events');
     },
   };
 }

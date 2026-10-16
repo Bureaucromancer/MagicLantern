@@ -133,7 +133,7 @@ exports[`POST /api/v1/libraries/{lib}/resolve > answers 422 for an unknown route
 
 exports[`POST /api/v1/libraries/{lib}/resolve > answers the resolution, in the response schema 1`] = `
 {
-  "descriptor_digest": "445a672a7662f77c5c7034a529d2354368c7af9e51bce5caf92b86b6a8ccaee6",
+  "descriptor_digest": "e7f0ba06699cc8a337a28fd9b80fd31274a47e1988d5543768270405c8416ba8",
   "effective": {
     "count": 1,
     "extensions": {
